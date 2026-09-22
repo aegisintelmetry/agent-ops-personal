@@ -68,13 +68,18 @@ else {
       const connection = state.connection === 'codex' ? new CodexConnection({ directory: agents.location(id), openExternal: url => shell.openExternal(url) }) : null;
       return { model: state.model, complete: messages => connection ? connection.complete(messages, state.model) : service.complete(messages), cancel: () => connection ? connection.cancel() : service.cancel(), close: () => connection?.stop() };
     } });
-    for (const method of ['state', 'start', 'cancel']) ipcMain.handle(`btk:team:${method}`, async (event, params) => {
+    for (const method of ['state', 'start', 'cancel', 'configuration', 'configure']) ipcMain.handle(`btk:team:${method}`, async (event, params) => {
       if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('Untrusted request');
       if (method === 'state') return team.state();
+      if (method === 'configuration') return agents.teamState();
       if (method === 'cancel') return team.cancel();
       personal.idle();
       if (personalDialogActive || codex.loginId) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
       if (team.active) throw new PersonalError('팀 작업이 진행 중입니다.');
+      if (method === 'configure') return agents.configureTeam(params);
+      const configuration = agents.teamState();
+      const participants = [params?.masterId, ...(Array.isArray(params?.workerIds) ? params.workerIds : [])];
+      if (participants.some(id => !configuration.agents.some(agent => agent.id === id && agent.configured))) throw new PersonalError('참여 에이전트의 모델 연결을 설정해 주세요.');
       personalDialogActive = true;
       try {
         const answer = await dialog.showMessageBox(window, { type: 'question', title: t('팀 작업 실행 확인'), buttons: [t('취소'), t('계속')], defaultId: 0, cancelId: 0, message: t('선택한 모델로 팀 작업을 실행할까요?'), detail: t('목표와 작업 결과가 참여 모델 공급자에게 전송됩니다. 최대 6회 호출하며 API 요금 또는 구독 한도가 소비됩니다. 기존 대화와 파일은 전송하지 않습니다. 실행 기록은 앱 종료 시 사라집니다.') });

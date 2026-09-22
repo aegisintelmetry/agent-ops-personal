@@ -9,6 +9,12 @@ function nameOf(name) {
   if (typeof name !== "string" || !name.trim() || name.trim().length > 60 || /[\x00-\x1f]/.test(name)) fail("에이전트 이름은 1~60자로 입력해 주세요.");
   return name.trim();
 }
+function teamOf(value, agents) {
+  if (!value || !Array.isArray(value.workerIds) || value.workerIds.length > 4 ||
+      new Set([value.masterId, ...value.workerIds]).size !== value.workerIds.length + 1 ||
+      [value.masterId, ...value.workerIds].some(id => !agents.some(a => a.id === id))) fail('팀 구성이 올바르지 않습니다.');
+  return { masterId: value.masterId, workerIds: [...value.workerIds] };
+}
 
 // Metadata lives here; model credentials remain in each PersonalService's OS-encrypted file.
 // The default agent keeps its original paths, including its existing Codex keyring identity.
@@ -27,7 +33,7 @@ class AgentProfiles {
             data.agents.some(a => !a || !validId(a.id) || nameOf(a.name) !== a.name) ||
             new Set(data.agents.map(a => a.id)).size !== data.agents.length ||
             !data.agents.some(a => a.id === "default") || !data.agents.some(a => a.id === data.selected)) throw new Error();
-        this.data = { schema: 1, selected: data.selected, agents: data.agents.map(({ id, name }) => ({ id, name })) };
+        this.data = { schema: 1, selected: data.selected, agents: data.agents.map(({ id, name }) => ({ id, name })), ...(data.team ? { team: teamOf(data.team, data.agents) } : {}) };
       } catch { fail("에이전트 목록을 읽지 못했습니다. 기존 설정은 덮어쓰지 않았습니다."); }
     }
     this.service = this.open(this.data.selected);
@@ -41,6 +47,20 @@ class AgentProfiles {
     return location;
   }
   open(id) { return this.factory({ ...this.options, directory: this.location(id) }); }
+  teamState() {
+    return { ...(this.data.team || { masterId: 'default', workerIds: [] }), agents: this.data.agents.map(agent => {
+      try {
+        const state = (agent.id === this.data.selected ? this.service : this.open(agent.id)).state();
+        return { ...agent, model: state.model, connection: state.connection, provider: state.provider,
+          configured: Boolean(state.mode === 'personal' && state.model && (state.connection === 'codex' || state.provider === 'local' || state.keyConfigured)) };
+      } catch { return { ...agent, model: '', connection: '', provider: '', configured: false }; }
+    }) };
+  }
+  configureTeam(value) {
+    this.service.idle();
+    this.persist({ ...this.data, team: teamOf(value, this.data.agents) });
+    return this.teamState();
+  }
   state(value = this.service.state()) {
     const agent = this.data.agents.find(a => a.id === this.data.selected);
     return { ...value, agentId: agent.id, agentName: agent.name, agents: this.data.agents.map(a => ({ ...a })) };

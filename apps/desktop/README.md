@@ -1,6 +1,6 @@
 # AEGIS Agent Ops Desktop Preview
 
-Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.7 includes
+Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.8 includes
 the Agent Ops workspace layout, centered composer and independent in-memory chat
 sessions. Sessions and drafts survive navigation, not app restart. The UI does
 not create a persistent session archive; submitted messages and selected history
@@ -49,6 +49,17 @@ the UI reads snapshots while running. Only the latest run is retained in memory,
 surviving navigation/reload but not app exit. Closing the app cancels active work.
 Model/profile changes and ordinary chat are locked during a team run. There are
 no extra PC runners, central fleet dispatch, file tools or external write tools.
+
+The team builder displays a master/worker hierarchy. Add a worker or attach an
+existing agent, then select its node to edit the name and API/Codex connection
+without leaving Team tasks. Model-configured badges describe saved configuration,
+not verified authentication or quota. Missing model configuration disables Run;
+the main process also checks it before opening the cost confirmation.
+`agents.json` is the authority for the saved `team.masterId` and `team.workerIds`.
+Model badges are derived from each agent's own settings on read; no secrets or
+endpoints are copied into team metadata. Removing a worker from the team does
+not delete that agent's configuration or login. Legacy profiles default to the
+default agent as master and no workers, without rewriting their settings on read.
 
 The authority for personal preferences and the encrypted key is
 `<Electron userData>/agent-ops-personal/personal.json`, outside the repository.
@@ -99,7 +110,7 @@ Build from `apps/desktop` after `npm ci`:
 powershell -NoProfile -File .\build-windows.ps1
 ```
 
-Output: `release/AEGIS-Agent-Ops-Setup-0.5.7-preview.exe` (Windows x64, NSIS).
+Output: `release/AEGIS-Agent-Ops-Setup-0.5.8-preview.exe` (Windows x64, NSIS).
 
 The language selector on the edition screen and app toolbar supports Korean and
 English. The desktop main process owns `userData/ui-preferences.json`; renderer

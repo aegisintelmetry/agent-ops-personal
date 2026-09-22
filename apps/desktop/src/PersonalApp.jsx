@@ -107,6 +107,16 @@ function ModelSettings({ state, busy, run, onSaved }) {
   </section>;
 }
 
+function AgentEditor({ state, busy, run, onSaved, onRenamed }) {
+  const { t } = useI18n();
+  const id = state.agentId;
+  return <>
+    <AgentName key={`name:${id}`} state={state} busy={busy} run={run} onSaved={onRenamed} />
+    <div className="personal-connection"><label>{t('연결 방식')}<select aria-label={t('연결 방식')} value={state.connection || 'api'} disabled={busy} onChange={event => { const value = event.target.value; run(async () => onSaved(await native().connection(value))); }}><option value="api">{t('API 키 / 로컬 모델')}</option><option value="codex">{t('ChatGPT 로그인')}</option></select></label></div>
+    {state.connection === 'codex' ? <CodexSettings key={`codex:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} /> : <ModelSettings key={`model:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} />}
+  </>;
+}
+
 function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
   const { t, locale, errorText } = useI18n();
   const [state, setState] = useState(initial);
@@ -159,11 +169,16 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
     setState(result);
     dispatch({ type: "reset", id: crypto.randomUUID() });
   }
-  function agentChanged(result) {
+  function agentChanged(result, keepView = false) {
     dispatchGroup({ agentId: result.agentId, action: { type: "ensure", id: crypto.randomUUID() } });
     setSlack(null);
     setState(result);
-    setView(result.model ? "chat" : "settings");
+    if (!keepView) setView(result.model ? "chat" : "settings");
+  }
+  async function teamAgent(action) {
+    setBusy(true);
+    try { const result = await action(); agentChanged(result, true); return result; }
+    finally { setBusy(false); }
   }
   async function send(event) {
     event.preventDefault();
@@ -207,11 +222,11 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
       <div className="sidebar-bottom"><button className="outline-button" disabled={locked} onClick={onModeChange}><Shield size={16} />{t("조직 연결")}</button></div>
     </aside>
     <main className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><ButtonIcon label={t("탐색 표시")} aria-expanded={navOpen} onClick={() => setNavOpen(value => !value)}><PanelLeft size={17} /></ButtonIcon><span>Personal</span><strong>{view === "settings" ? t("모델 연결") : view === "connectors" ? t("커넥터") : t("작업 공간")}</strong></div><div className="topbar-actions"><LanguageSelect /><span className="personal-local">{t("중앙 연결 없음")}</span>{view === "chat" && <ButtonIcon label={t("실행 요약 표시")} aria-pressed={showSummary} onClick={() => setShowSummary(value => !value)}><PanelRight size={17} /></ButtonIcon>}</div></header>
+      <header className="topbar"><div className="breadcrumb"><ButtonIcon label={t("탐색 표시")} aria-expanded={navOpen} onClick={() => setNavOpen(value => !value)}><PanelLeft size={17} /></ButtonIcon><span>Personal</span><strong>{view === 'team' ? t('팀 작업') : view === "settings" ? t("모델 연결") : view === "connectors" ? t("커넥터") : t("작업 공간")}</strong></div><div className="topbar-actions"><LanguageSelect /><span className="personal-local">{t("중앙 연결 없음")}</span>{view === "chat" && <ButtonIcon label={t("실행 요약 표시")} aria-pressed={showSummary} onClick={() => setShowSummary(value => !value)}><PanelRight size={17} /></ButtonIcon>}</div></header>
       {(error || modeError) && <div className="personal-error" role="alert"><CircleAlert size={17} /><span>{errorText(error || modeError)}</span></div>}
-      <div className="personal-agent-bar"><label>{t("에이전트")}<select aria-label={t("에이전트")} disabled={locked} value={agentId} onChange={event => { const id = event.target.value; run(async () => agentChanged(await native().agents.select(id))); }}>{(state.agents || [{ id: "default", name: t("기본 에이전트") }]).map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select></label><ButtonIcon label={t("에이전트 추가")} disabled={locked || (state.agents?.length || 1) >= 20} onClick={() => run(async () => agentChanged(await native().agents.create(t("새 에이전트"))))}><Plus size={18} /></ButtonIcon><span>{state.model || t("모델 미설정")}</span></div>
-      {view === 'team' ? <TeamPanel agents={state.agents} selectedId={agentId} run={teamRun} busy={locked} onStart={params => run(async () => setTeamRun(await native().team.start(params)))} onCancel={() => run(async () => setTeamRun(await native().team.cancel()))} /> :
-      view === "settings" ? <div key="settings" className="personal-settings-scroll"><AgentName key={`name:${agentId}`} state={state} busy={locked} run={run} onSaved={setState} /><div className="personal-connection"><label>{t("연결 방식")}<select aria-label={t("연결 방식")} value={state.connection || "api"} disabled={locked} onChange={event => { const value = event.target.value; run(async () => saved(await native().connection(value))); }}><option value="api">{t("API 키 / 로컬 모델")}</option><option value="codex">{t("ChatGPT 로그인")}</option></select></label></div>{state.connection === "codex" ? <CodexSettings key={`codex:${agentId}`} state={state} busy={locked} run={run} onSaved={saved} /> : <ModelSettings key={`model:${agentId}:${state.connection || "api"}`} state={state} busy={locked} run={run} onSaved={saved} />}</div> : view === "connectors" ? <div key="connectors" className="personal-settings-scroll"><SlackPanel key={agentId} state={slack} onState={setSlack} busy={locked} run={run} /></div> :
+      {view !== 'team' && <div className="personal-agent-bar"><label>{t("에이전트")}<select aria-label={t("에이전트")} disabled={locked} value={agentId} onChange={event => { const id = event.target.value; run(async () => agentChanged(await native().agents.select(id))); }}>{(state.agents || [{ id: "default", name: t("기본 에이전트") }]).map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select></label><ButtonIcon label={t("에이전트 추가")} disabled={locked || (state.agents?.length || 1) >= 20} onClick={() => run(async () => agentChanged(await native().agents.create(t("새 에이전트"))))}><Plus size={18} /></ButtonIcon><span>{state.model || t("모델 미설정")}</span></div>}
+      {view === 'team' ? <TeamPanel state={state} run={teamRun} busy={locked} onStart={params => run(async () => setTeamRun(await native().team.start(params)))} onCancel={() => run(async () => setTeamRun(await native().team.cancel()))} onSelect={id => teamAgent(() => native().agents.select(id))} onCreate={name => teamAgent(() => native().agents.create(name))} renderEditor={editorBusy => <AgentEditor state={state} busy={editorBusy} run={run} onSaved={saved} onRenamed={setState} />} /> :
+      view === "settings" ? <div key="settings" className="personal-settings-scroll"><AgentEditor state={state} busy={locked} run={run} onSaved={saved} onRenamed={setState} /></div> : view === "connectors" ? <div key="connectors" className="personal-settings-scroll"><SlackPanel key={agentId} state={slack} onState={setSlack} busy={locked} run={run} /></div> :
         <div key="chat" className={`personal-workspace ${showSummary ? "with-summary" : ""}`}>
         <section className="personal-chat">
           <div className="personal-context"><FolderOpen size={15} /><span title={state.workspace}>{state.workspace || t("작업 폴더 미선택")}</span><small>{t("파일 접근 비활성")}</small></div>

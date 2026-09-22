@@ -1,7 +1,7 @@
 # AEGIS Agent Ops
 
 AEGIS Agent Ops Personal / Enterprise 제품 소스 저장소입니다. 공개 준비 중이며 아직 비공개입니다.
-현재 범위는 **Personal 데스크톱 0.5.7 프리뷰와 독립 제품 코어**입니다.
+현재 범위는 **Personal 데스크톱 0.5.8 프리뷰와 독립 제품 코어**입니다.
 Enterprise 웹/제어 모듈과 운영 러너 전체의 이전이 완료된 것은 아닙니다.
 AEGIS 보안 제품은 Enterprise 전용 별도 모듈이며 이 저장소에 포함하지 않습니다.
 
@@ -46,6 +46,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File apps/desktop/build-windows.p
 실행 결과는 메모리에만 유지됩니다. 작업자 실패·부분 응답은 전체 완료로 표시하지 않습니다.
 0.5.7은 ChatGPT 모델 설정에서 대화로 전환할 때 중복 React key로 이름 입력란이 남아
 대화가 오른쪽으로 밀리고 실행 요약이 아래로 내려가는 문제를 수정했습니다.
+0.5.8은 팀 구성을 마스터와 하위 에이전트 트리로 표시합니다. 트리에서 추가·선택 후
+같은 화면에서 이름과 모델 연결을 설정하며, 미설정 참여자가 있으면 실행을 막습니다.
+팀 구성은 저장되며 팀에서 제외해도 에이전트와 키는 삭제하지 않습니다.
 설치본의 `resources/THIRD-PARTY-NOTICES.txt`에 UI·Electron·Python·PyYAML·PyInstaller 고지를 포함합니다.
 
 ## 소스 경계

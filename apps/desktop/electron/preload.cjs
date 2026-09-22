@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld("btk", {
   },
   personal: {
     team: {
+      configuration: () => ipcRenderer.invoke('btk:team:configuration'),
+      configure: params => ipcRenderer.invoke('btk:team:configure', params),
       state: () => ipcRenderer.invoke('btk:team:state'),
       start: params => ipcRenderer.invoke('btk:team:start', params),
       cancel: () => ipcRenderer.invoke('btk:team:cancel'),

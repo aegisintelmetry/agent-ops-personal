@@ -23,6 +23,33 @@ test("legacy settings and Codex identity remain at their original paths", t => {
   assert.equal(restored.location("default"), directory);
   assert.equal(fs.readFileSync(path.join(directory, "personal.json"), "utf8"), before);
 });
+test('team hierarchy persists without changing selected agent or sharing credentials', t => {
+  const { profiles, options } = setup(t);
+  profiles.service.setMode('personal');
+  profiles.service.save({ ...local('master'), apiKey: 'fixture-only-master-key' });
+  const worker = profiles.create('worker');
+  profiles.configureTeam({ masterId: 'default', workerIds: [worker.agentId] });
+  const state = profiles.teamState();
+  assert.equal(state.agents.find(a => a.id === 'default').configured, true);
+  assert.equal(state.agents.find(a => a.id === worker.agentId).configured, false);
+  assert.equal(JSON.stringify(state).includes('fixture-only'), false);
+  assert.equal(JSON.stringify(state).includes('encryptedKey'), false);
+  assert.equal(profiles.data.selected, worker.agentId);
+  const restored = new AgentProfiles(options);
+  assert.deepEqual(restored.teamState(), state);
+  restored.service.save(local('worker-model'));
+  assert.equal(restored.teamState().agents.find(a => a.id === worker.agentId).configured, true);
+  restored.configureTeam({ masterId: 'default', workerIds: [] });
+  assert.equal(restored.state().agents.length, 2);
+});
+test('invalid team membership cannot alter saved hierarchy', t => {
+  const { profiles } = setup(t);
+  const worker = profiles.create('worker');
+  profiles.configureTeam({ masterId: 'default', workerIds: [worker.agentId] });
+  const before = fs.readFileSync(profiles.file, 'utf8');
+  for (const value of [null, {}, { masterId: 'missing', workerIds: [] }, { masterId: 'default', workerIds: ['default'] }, { masterId: 'default', workerIds: [worker.agentId, worker.agentId] }]) assert.throws(() => profiles.configureTeam(value));
+  assert.equal(fs.readFileSync(profiles.file, 'utf8'), before);
+});
 test("agent settings and keys are independent and persist across restart", t => {
   const { profiles, options } = setup(t);
   profiles.service.setMode("personal");

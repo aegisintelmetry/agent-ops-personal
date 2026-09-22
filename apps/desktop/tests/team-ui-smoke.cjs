@@ -41,17 +41,44 @@ const server = http.createServer(async (req, res) => {
   }, `http://127.0.0.1:${server.address().port}/v1`);
   await page.reload();
   await page.getByRole('button', { name: '팀 작업', exact: true }).click();
-  await page.getByLabel('Research', { exact: true }).check();
-  await page.getByLabel('Review', { exact: true }).check();
+  for (const name of ['Research', 'Review']) {
+    await page.getByRole('combobox', { name: '기존 에이전트 연결', exact: true }).selectOption({ label: name });
+    await page.getByRole('button', { name: '기존 에이전트 연결', exact: true }).click();
+    await page.getByRole('button', { name: `${name} 설정`, exact: true }).waitFor();
+  }
   await page.getByLabel('작업 목표', { exact: true }).fill('Compare fixture results');
   // Native dialog is accepted only inside this isolated, local-provider fixture.
   await app.evaluate(({ dialog }) => { dialog.showMessageBox = async () => ({ response: 1 }); });
   await page.getByRole('button', { name: '팀 작업 실행', exact: true }).click();
   await page.waitForFunction(async () => (await window.btk.personal.team.state())?.status === 'running');
   assert.equal(await page.evaluate(async () => { try { await window.btk.personal.mode('enterprise'); return false; } catch { return true; } }), true);
+  assert.equal(await page.evaluate(async () => { try { await window.btk.personal.team.configure({ masterId: 'default', workerIds: [] }); return false; } catch { return true; } }), true);
   await page.getByText('Verified fixture synthesis', { exact: true }).waitFor();
   assert.deepEqual(requests.map(r => r.model), ['master-model', 'research-model', 'review-model', 'master-model']);
   assert.equal((await page.evaluate(() => window.btk.personal.team.state())).status, 'completed');
+  await page.getByRole('button', { name: '하위 에이전트 추가', exact: true }).click();
+  await page.getByRole('region', { name: '에이전트 설정', exact: true }).waitFor();
+  await page.getByRole('button', { name: '작업 에이전트 1 설정', exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: '팀 작업 실행', exact: true }).isDisabled(), true);
+  assert.equal(await page.evaluate(async () => { const c = await window.btk.personal.team.configuration(); try { await window.btk.personal.team.start({ masterId: c.masterId, workerIds: c.workerIds, objective: 'invalid setup' }); return false; } catch { return true; } }), true);
+  assert.equal(requests.length, 4);
+  assert.equal(await page.locator('.personal-agent-bar').count(), 0);
+  const editor = page.getByRole('region', { name: '에이전트 설정', exact: true });
+  await editor.getByLabel('공급자', { exact: true }).selectOption('local');
+  await editor.getByLabel('API 주소', { exact: true }).fill(`http://127.0.0.1:${server.address().port}/v1`);
+  await editor.getByLabel('모델 ID', { exact: true }).fill('inline-worker-model');
+  await editor.getByRole('button', { name: '저장', exact: true }).click();
+  await page.waitForFunction(async () => (await window.btk.personal.team.configuration()).agents.some(a => a.model === 'inline-worker-model' && a.configured));
+  await page.getByRole('button', { name: '작업 에이전트 1 설정', exact: true }).getByText('inline-worker-model', { exact: true }).waitFor();
+  const persisted = await page.evaluate(() => window.btk.personal.team.configuration());
+  assert.equal(persisted.workerIds.length, 3);
+  await page.getByRole('button', { name: '설정 닫기', exact: true }).click();
+  await page.reload();
+  await page.getByRole('button', { name: '팀 작업', exact: true }).click();
+  await page.getByRole('button', { name: '작업 에이전트 1 설정', exact: true }).waitFor();
+  assert.deepEqual((await page.evaluate(() => window.btk.personal.team.configuration())).workerIds, persisted.workerIds);
+  await page.getByRole('button', { name: '작업 에이전트 1 설정', exact: true }).click();
+  await page.getByRole('region', { name: '에이전트 설정', exact: true }).waitFor();
   await page.getByLabel('언어 / Language').selectOption('en');
   await page.getByRole('heading', { name: 'Team tasks', exact: true }).waitFor();
   fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
@@ -62,5 +89,5 @@ const server = http.createServer(async (req, res) => {
     await page.screenshot({ path: path.join(root, `artifacts/team-${width}.png`) });
   }
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({ status: 'passed', checks: ['native-master-dispatch-synthesis', 'model-isolation', 'busy-mode-gate', 'english', 'desktop-mobile-layout'], actualProviderRequests: false }));
+  console.log(JSON.stringify({ status: 'passed', checks: ['native-master-dispatch-synthesis', 'model-isolation', 'busy-mode-gate', 'tree-attach-existing', 'tree-create-worker-inline-settings', 'missing-model-disables-run', 'persisted-hierarchy', 'english', 'desktop-mobile-layout'], actualProviderRequests: false }));
 })().catch(e => { console.error(e); process.exitCode = 1; }).finally(async () => { await app?.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
