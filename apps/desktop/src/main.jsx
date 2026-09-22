@@ -1,3 +1,4 @@
+import { useI18n, LanguageSelect, LanguageProvider } from "./Language";
 import React, { useEffect, useReducer, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -52,22 +53,23 @@ const names = {
   unknown: "미확인",
   superseded: "대체됨",
 };
-const time = (value) => {
+const formatTime = (value, locale, t) => {
   const date = new Date(value);
   return value && !Number.isNaN(+date)
-    ? date.toLocaleString("ko-KR", {
+    ? date.toLocaleString(locale, {
         month: "2-digit",
         day: "2-digit",
         hour: "2-digit",
         minute: "2-digit",
       })
-    : "시간 미기록";
+    : t("시간 미기록");
 };
 function Status({ value }) {
+  const { t } = useI18n();
   return (
     <span className={`status ${value || "unknown"}`} title={value}>
       <span />
-      {names[value] || value || "미확인"}
+      {t(names[value] || value || "미확인")}
     </span>
   );
 }
@@ -79,12 +81,13 @@ function IconButton({ label, children, ...props }) {
   );
 }
 function Facts({ rows }) {
+  const { t } = useI18n();
   return (
     <dl className="facts">
       {rows.map(([label, value]) => (
         <div key={label}>
           <dt>{label}</dt>
-          <dd>{value || "미설정"}</dd>
+          <dd>{value || t("미설정")}</dd>
         </div>
       ))}
     </dl>
@@ -92,6 +95,8 @@ function Facts({ rows }) {
 }
 
 function App({ onModeChange, modeBusy }) {
+  const { t, locale, errorText } = useI18n();
+  const time = value => formatTime(value, locale, t);
   const [view, setView] = useState("chat");
   const [snapshot, setSnapshot] = useState(null);
   const [connection, setConnection] = useState(null);
@@ -199,7 +204,7 @@ function App({ onModeChange, modeBusy }) {
               ? {
                   ...row,
                   state: "backend_unavailable",
-                  content: "연결이 종료되어 답변을 완료하지 못했습니다.",
+                  content: t("연결이 종료되어 답변을 완료하지 못했습니다."),
                 }
               : row,
           ),
@@ -282,11 +287,11 @@ function App({ onModeChange, modeBusy }) {
   );
   const connected = connection?.transport === "connected";
   const subtitle = {
-    chat: "로컬 에이전트",
-    history: "이 PC의 실행 기록",
-    runtime: "런타임 관측",
-    settings: "연결된 프로파일",
-    setup: "설치 및 시작 상태",
+    chat: t("로컬 에이전트"),
+    history: t("이 PC의 실행 기록"),
+    runtime: t("런타임 관측"),
+    settings: t("연결된 프로파일"),
+    setup: t("설치 및 시작 상태"),
   }[view];
 
   return (
@@ -303,15 +308,14 @@ function App({ onModeChange, modeBusy }) {
         <button
           className="new-chat"
           disabled={busy || sessions.items.length >= MAX_SESSIONS}
-          title={sessions.items.length >= MAX_SESSIONS ? "대화를 삭제한 후 새로 시작할 수 있습니다." : "새 대화"}
+          title={sessions.items.length >= MAX_SESSIONS ? t("대화를 삭제한 후 새로 시작할 수 있습니다.") : t("새 대화")}
           onClick={() => {
             dispatchSession({ type: "create", id: crypto.randomUUID() });
             setView("chat");
           }}
         >
-          <Plus size={17} />새 대화
-        </button>
-        <nav aria-label="주 탐색">
+          <Plus size={17} />{t("새 대화")} </button>
+        <nav aria-label={t("주 탐색")}>
           {navigation.map(([key, name, Icon]) => (
             <button
               key={key}
@@ -319,29 +323,29 @@ function App({ onModeChange, modeBusy }) {
               onClick={() => setView(key)}
             >
               <Icon size={18} />
-              <span>{name}</span>
+              <span>{t(name)}</span>
               {key === "history" && <small>{tasks.length}</small>}
             </button>
           ))}
         </nav>
-        <section className="session-list" aria-label="대화 세션">
-          <h2>세션 <span>{sessions.items.length}</span></h2>
+        <section className="session-list" aria-label={t("대화 세션")}>
+          <h2>{t("세션")} <span>{sessions.items.length}</span></h2>
           {sessions.items.map(session => <div className={`session-row ${session.id === sessions.selected && view === "chat" ? "selected" : ""}`} key={session.id}>
             <button className="session-select" disabled={busy} aria-current={session.id === sessions.selected && view === "chat" ? "page" : undefined}
-              title={session.title} onClick={() => { dispatchSession({ type: "select", id: session.id }); setView("chat"); }}>
-              <MessageSquare size={15} /><span>{session.title}</span>
+              title={session.messages.length ? session.title : t("새 대화")} onClick={() => { dispatchSession({ type: "select", id: session.id }); setView("chat"); }}>
+              <MessageSquare size={15} /><span>{session.messages.length ? session.title : t("새 대화")}</span>
             </button>
-            <IconButton label={`${session.title} 대화 삭제`} disabled={busy} onClick={() => { setDeleteSession(session); deleteDialog.current.showModal(); }}><X size={13} /></IconButton>
+            <IconButton label={t("{0} 대화 삭제", [session.title])} disabled={busy} onClick={() => { setDeleteSession(session); deleteDialog.current.showModal(); }}><X size={13} /></IconButton>
           </div>)}
         </section>
         <div className="sidebar-bottom">
-          {onModeChange && <IconButton label="개인용으로 전환" disabled={busy || modeBusy} onClick={onModeChange}><Cpu size={18} /></IconButton>}
+          {onModeChange && <IconButton label={t("개인용으로 전환")} disabled={busy || modeBusy} onClick={onModeChange}><Cpu size={18} /></IconButton>}
           <div className="avatar">
             {(profile?.team_id || "AEGIS").replace("team-", "T")}
           </div>
           <div>
-            <strong>{profile?.name || "프로파일 확인 중"}</strong>
-              <small>{profile?.runner || (snapshot?.registration_required ? "등록 대기" : "연결 중")}</small>
+            <strong>{profile?.name || t("프로파일 확인 중")}</strong>
+              <small>{profile?.runner || (snapshot?.registration_required ? t("등록 대기") : t("연결 중"))}</small>
           </div>
         </div>
       </aside>
@@ -349,24 +353,25 @@ function App({ onModeChange, modeBusy }) {
       <div className="main-shell">
         <header className="topbar">
           <div className="breadcrumb">
-            <span>워크스페이스</span>
+            <span>{t("워크스페이스")}</span>
             <ChevronRight size={14} />
-            <strong>{navigation.find((row) => row[0] === view)[1]}</strong>
+            <strong>{t(navigation.find((row) => row[0] === view)[1])}</strong>
           </div>
           <div className="topbar-actions">
-            {view === "chat" && <IconButton label="컨텍스트 표시" aria-pressed={showContext} onClick={() => setShowContext(value => !value)}><PanelRight size={17} /></IconButton>}
+            <LanguageSelect />
+            {view === "chat" && <IconButton label={t("컨텍스트 표시")} aria-pressed={showContext} onClick={() => setShowContext(value => !value)}><PanelRight size={17} /></IconButton>}
             <span
               className={`connection-badge ${connected ? "connected" : ""}`}
             >
               <span />
               {checking
-                ? "중앙 확인 중"
+                ? t("중앙 확인 중")
                 : connected
-                  ? "중앙 연결됨"
-                  : "중앙 확인 필요"}
+                  ? t("중앙 연결됨")
+                  : t("중앙 확인 필요")}
             </span>
             <IconButton
-              label="기록 새로고침"
+              label={t("기록 새로고침")}
               disabled={loading}
               onClick={refresh}
             >
@@ -377,8 +382,8 @@ function App({ onModeChange, modeBusy }) {
         {error && (
           <div className="alert" role="alert">
             <CircleAlert size={17} />
-            <span>{error}</span>
-            <IconButton label="오류 닫기" onClick={() => setError("")}>
+            <span>{errorText(error)}</span>
+            <IconButton label={t("오류 닫기")} onClick={() => setError("")}>
               <X size={16} />
             </IconButton>
           </div>
@@ -386,17 +391,17 @@ function App({ onModeChange, modeBusy }) {
         <div className="page-heading">
           <div>
             <span className="eyebrow">{subtitle}</span>
-            <h1>{navigation.find((row) => row[0] === view)[1]}</h1>
+            <h1>{t(navigation.find((row) => row[0] === view)[1])}</h1>
           </div>
           <span className="mode-label">
             <LockKeyhole size={13} />
-            {api.native ? "읽기 전용 대화" : "브라우저 조회 모드"}
+            {api.native ? t("읽기 전용 대화") : t("브라우저 조회 모드")}
           </span>
         </div>
 
         {view === "chat" && (
           <div className={`chat-layout ${showContext ? "with-context" : ""}`}>
-            <section className={`conversation ${messages.length ? "has-messages" : "is-empty"}`} aria-label="에이전트 대화">
+            <section className={`conversation ${messages.length ? "has-messages" : "is-empty"}`} aria-label={t("에이전트 대화")}>
               <div className="conversation-bar">
                 <div className="agent-mark">
                   <Cpu size={18} />
@@ -404,9 +409,9 @@ function App({ onModeChange, modeBusy }) {
                 <div>
                   <strong>AEGIS Assistant</strong>
                   <span>
-                    {snapshot?.model.engine || "엔진 확인 중"}
+                    {snapshot?.model.engine || t("엔진 확인 중")}
                     <b>·</b>
-                    {snapshot?.model.model || "기본 모델"}
+                    {snapshot?.model.model || t("기본 모델")}
                   </span>
                 </div>
                 <span className="effort">
@@ -426,7 +431,7 @@ function App({ onModeChange, modeBusy }) {
                 {!messages.length && (
                   <div className="empty-chat">
                     <Workflow size={30} strokeWidth={1.4} className="workspace-logo" />
-                    <h2>지금 무엇을 확인할까요?</h2>
+                    <h2>{t("지금 무엇을 확인할까요?")}</h2>
                   </div>
                 )}
                 {messages.map((message) => (
@@ -436,7 +441,7 @@ function App({ onModeChange, modeBusy }) {
                   >
                     <div className="message-label">
                       {message.role === "user" ? (
-                        "나"
+                        t("나")
                       ) : (
                         <>
                           <Shield size={14} />
@@ -448,18 +453,14 @@ function App({ onModeChange, modeBusy }) {
                     <div className="message-content">
                       {message.content || (
                         <span className="thinking">
-                          <LoaderCircle size={15} className="spin" />
-                          답변 생성 중 · {message.elapsed || 0}초
-                        </span>
+                          <LoaderCircle size={15} className="spin" /> {t("답변 생성 중 ·")} {message.elapsed || 0}{t("초")} </span>
                       )}
                     </div>
                     {message.state === "cancelled" && (
-                      <small className="muted">중단됨</small>
+                      <small className="muted">{t("중단됨")}</small>
                     )}
                     {message.state === "backend_unavailable" && (
-                      <small className="failure-note">
-                        답변을 완료하지 못했습니다.
-                      </small>
+                      <small className="failure-note"> {t("답변을 완료하지 못했습니다.")} </small>
                     )}
                   </article>
                 ))}
@@ -471,8 +472,8 @@ function App({ onModeChange, modeBusy }) {
                   onChange={(e) => setDraft(e.target.value)}
                   maxLength={5000}
                   rows={3}
-                  aria-label="메시지"
-                  placeholder="AEGIS에게 메시지 보내기"
+                  aria-label={t("메시지")}
+                  placeholder={t("AEGIS에게 메시지 보내기")}
                   onKeyDown={(e) => {
                     if (
                       e.key === "Enter" &&
@@ -486,16 +487,14 @@ function App({ onModeChange, modeBusy }) {
                 />
                 <div className="composer-bottom">
                   <span>
-                    <LockKeyhole size={12} />
-                    도구 실행 차단
-                  </span>
+                    <LockKeyhole size={12} /> {t("도구 실행 차단")} </span>
                   <div>
                     <small>
                       {draft.length > 4500 ? `${draft.length}/5000` : ""}
                     </small>
                     {busy ? (
                       <IconButton
-                        label="답변 중단"
+                        label={t("답변 중단")}
                         type="button"
                         onClick={cancel}
                       >
@@ -505,8 +504,8 @@ function App({ onModeChange, modeBusy }) {
                       <button
                         className="send"
                         type="submit"
-                        title="메시지 전송"
-                        aria-label="메시지 전송"
+                        title={t("메시지 전송")}
+                        aria-label={t("메시지 전송")}
                         disabled={
                           !draft.trim() ||
                           !snapshot?.chat.available ||
@@ -521,30 +520,28 @@ function App({ onModeChange, modeBusy }) {
               </form>
               <div className="composer-note">
                 {!api.native
-                  ? "브라우저 조회 모드"
+                  ? t("브라우저 조회 모드")
                   : snapshot?.chat.reason || ""}
               </div>
             </section>
             {showContext && <aside className="context-panel">
               <div className="context-heading">
-                <span>현재 컨텍스트</span>
+                <span>{t("현재 컨텍스트")}</span>
                 <FileText size={16} />
               </div>
               <Facts
                 rows={[
                   ["PC", snapshot?.host],
-                  ["러너", profile?.runner],
-                  ["팀", profile?.team_id],
+                  [t("러너"), profile?.runner],
+                  [t("팀"), profile?.team_id],
                 ]}
               />
               <div className="context-heading spaced">
-                <span>최근 실행</span>
+                <span>{t("최근 실행")}</span>
                 <button
                   className="text-button"
                   onClick={() => setView("history")}
-                >
-                  전체 보기
-                  <ArrowRight size={13} />
+                > {t("전체 보기")} <ArrowRight size={13} />
                 </button>
               </div>
               <div className="recent-tasks">
@@ -557,7 +554,7 @@ function App({ onModeChange, modeBusy }) {
                     <Status value={task.status} />
                     <strong title={task.task_id}>{task.task_id}</strong>
                     <small>
-                      {task.runner_id || "러너 미기록"}
+                      {task.runner_id || t("러너 미기록")}
                       <ChevronRight size={13} />
                     </small>
                   </button>
@@ -565,16 +562,14 @@ function App({ onModeChange, modeBusy }) {
                 {!tasks.length && (
                   <p className="muted">
                     {loading
-                      ? "기록을 읽고 있습니다."
-                      : "로컬 실행 기록이 없습니다."}
+                      ? t("기록을 읽고 있습니다.")
+                      : t("로컬 실행 기록이 없습니다.")}
                   </p>
                 )}
               </div>
               <div className="context-footer">
                 <Clock3 size={14} />
-                <span>
-                  관측 시각
-                  <br />
+                <span> {t("관측 시각")} <br />
                   <strong>{time(snapshot?.observed_at)}</strong>
                 </span>
               </div>
@@ -590,36 +585,36 @@ function App({ onModeChange, modeBusy }) {
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="작업, 러너, 이유 검색"
-                  aria-label="실행 기록 검색"
+                  placeholder={t("작업, 러너, 이유 검색")}
+                  aria-label={t("실행 기록 검색")}
                 />
               </label>
               <select
-                aria-label="상태 필터"
+                aria-label={t("상태 필터")}
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
               >
-                <option value="all">전체 상태</option>
+                <option value="all">{t("전체 상태")}</option>
                 {[...new Set(tasks.map((task) => task.status))]
                   .sort()
                   .map((status) => (
                     <option key={status} value={status}>
-                      {names[status] || status}
+                      {t(names[status] || status)}
                     </option>
                   ))}
               </select>
-              <span className="muted">{visibleTasks.length}건</span>
+              <span className="muted">{visibleTasks.length}{t("건")}</span>
             </div>
             <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>작업</th>
-                    <th>러너</th>
-                    <th>상태</th>
-                    <th>기록 시각</th>
+                    <th>{t("작업")}</th>
+                    <th>{t("러너")}</th>
+                    <th>{t("상태")}</th>
+                    <th>{t("기록 시각")}</th>
                     <th>
-                      <span className="sr-only">상세</span>
+                      <span className="sr-only">{t("상세")}</span>
                     </th>
                   </tr>
                 </thead>
@@ -633,7 +628,7 @@ function App({ onModeChange, modeBusy }) {
                         >
                           {task.task_id}
                         </button>
-                        <span className="mobile-runner">{task.runner_id || "러너 미기록"}</span>
+                        <span className="mobile-runner">{task.runner_id || t("러너 미기록")}</span>
                         {task.reason && (
                           <span className="reason-preview" title={task.reason}>
                             {task.reason}
@@ -641,7 +636,7 @@ function App({ onModeChange, modeBusy }) {
                         )}
                       </td>
                       <td className="runner-cell">
-                        {task.runner_id || "미기록"}
+                        {task.runner_id || t("미기록")}
                       </td>
                       <td>
                         <Status value={task.status} />
@@ -649,7 +644,7 @@ function App({ onModeChange, modeBusy }) {
                       <td className="date-cell">{time(task.updated_at)}</td>
                       <td>
                         <IconButton
-                          label={`${task.task_id} 상세`}
+                          label={t("{0} 상세", [task.task_id])}
                           onClick={() => openTask(task)}
                         >
                           <ChevronRight size={16} />
@@ -664,20 +659,16 @@ function App({ onModeChange, modeBusy }) {
                   <Search size={24} />
                   <p>
                     {loading
-                      ? "기록을 읽는 중입니다."
-                      : "일치하는 실행 기록이 없습니다."}
+                      ? t("기록을 읽는 중입니다.")
+                      : t("일치하는 실행 기록이 없습니다.")}
                   </p>
                 </div>
               )}
             </div>
-            <footer className="table-footer">
-              최근 로컬 기록 {tasks.length}건
-              <span>기준: runs/&lt;task&gt;/status.json</span>
+            <footer className="table-footer"> {t("최근 로컬 기록")} {tasks.length}{t("건")} <span>{t("기준: runs/<task>/status.json")}</span>
             </footer>
             {Boolean(snapshot?.warnings.length) && (
-              <p className="failure-note">
-                읽지 못한 기록 {snapshot.warnings.length}건
-              </p>
+              <p className="failure-note"> {t("읽지 못한 기록")} {snapshot.warnings.length}{t("건")} </p>
             )}
           </section>
         )}
@@ -686,7 +677,7 @@ function App({ onModeChange, modeBusy }) {
           <section className="content-page settings-page">
             <div className="section-header">
               <div>
-                <h2>중앙 연결</h2>
+                <h2>{t("중앙 연결")}</h2>
                 <span className="muted">
                   {connection?.authority || "runner.heartbeat.list"}
                 </span>
@@ -696,25 +687,23 @@ function App({ onModeChange, modeBusy }) {
                 disabled={checking}
                 onClick={checkConnection}
               >
-                <RefreshCw size={15} className={checking ? "spin" : ""} />
-                다시 확인
-              </button>
+                <RefreshCw size={15} className={checking ? "spin" : ""} /> {t("다시 확인")} </button>
             </div>
             <Facts
               rows={[
                 [
-                  "통신 상태",
-                  checking ? "확인 중" : connected ? "연결됨" : "확인 실패",
+                  t("통신 상태"),
+                  checking ? t("확인 중") : connected ? t("연결됨") : t("확인 실패"),
                 ],
-                ["러너 상태", connection?.status || "unknown"],
+                [t("러너 상태"), connection?.status || "unknown"],
                 [
-                  "Heartbeat 경과",
+                  t("Heartbeat 경과"),
                   connection?.heartbeat_age_minutes != null
-                    ? `${connection.heartbeat_age_minutes}분`
-                    : "측정값 없음",
+                    ? t("{0}분", [connection.heartbeat_age_minutes])
+                    : t("측정값 없음"),
                 ],
-                ["마지막 heartbeat", time(connection?.last_seen_at)],
-                ["관측 시각", time(connection?.observed_at)],
+                [t("마지막 heartbeat"), time(connection?.last_seen_at)],
+                [t("관측 시각"), time(connection?.observed_at)],
               ]}
             />
             {connection?.error && (
@@ -724,22 +713,22 @@ function App({ onModeChange, modeBusy }) {
               </div>
             )}
             <div className="section-header spaced">
-              <h2>로컬 연결</h2>
+              <h2>{t("로컬 연결")}</h2>
               <span className="status completed">
                 <span />
-                {snapshot ? "프로파일 읽기 완료" : "미확인"}
+                {snapshot ? t("프로파일 읽기 완료") : t("미확인")}
               </span>
             </div>
             <Facts
               rows={[
                 ["PC", snapshot?.host],
-                ["작업 경로", profile?.workspace],
+                [t("작업 경로"), profile?.workspace],
                 [
-                  "인증 정보",
-                  profile?.credential_configured ? "설정됨" : "미설정",
+                  t("인증 정보"),
+                  profile?.credential_configured ? t("설정됨") : t("미설정"),
                 ],
-                ["서비스 제어", "기존 supervisor에서 관리"],
-                ["앱 버전", snapshot?.version],
+                [t("서비스 제어"), t("기존 supervisor에서 관리")],
+                [t("앱 버전"), snapshot?.version],
               ]}
             />
           </section>
@@ -747,59 +736,57 @@ function App({ onModeChange, modeBusy }) {
 
         {view === "setup" && <section className="content-page settings-page">
           <SetupPanel profile={profile} onChanged={() => { refresh(); inspectInstall(); checkConnection(); }} />
-          <div className="section-header"><div><h2>시작 전 점검</h2><span className="muted">{readiness?.release.bundled ? "앱 · Python 코어 동봉" : "개발 소스 연결"}</span></div>
-            <button className="outline-button" disabled={inspecting} onClick={inspectInstall}><RefreshCw size={15} className={inspecting ? "spin" : ""} />다시 점검</button></div>
-          {inspectError && <div className="connection-error" role="alert"><CircleAlert size={18} /><p>{inspectError}</p></div>}
-          {!readiness && inspecting && <p className="thinking setup-loading"><LoaderCircle size={16} className="spin" />설치 상태를 확인하고 있습니다.</p>}
+          <div className="section-header"><div><h2>{t("시작 전 점검")}</h2><span className="muted">{readiness?.release.bundled ? t("앱 · Python 코어 동봉") : t("개발 소스 연결")}</span></div>
+            <button className="outline-button" disabled={inspecting} onClick={inspectInstall}><RefreshCw size={15} className={inspecting ? "spin" : ""} />{t("다시 점검")}</button></div>
+          {inspectError && <div className="connection-error" role="alert"><CircleAlert size={18} /><p>{errorText(inspectError)}</p></div>}
+          {!readiness && inspecting && <p className="thinking setup-loading"><LoaderCircle size={16} className="spin" />{t("설치 상태를 확인하고 있습니다.")}</p>}
           <div className="readiness-list">{readiness?.checks.map(check => <div className="readiness-row" key={check.id}>
             <span className={`check-icon ${check.state}`}>{check.state === "ready" ? <Check size={18} /> : <CircleAlert size={18} />}</span>
-            <div><h3>{check.label}</h3><p>{check.detail}</p><small>{check.source}</small></div><span className={`readiness-state ${check.state}`}>{check.state === "ready" ? "확인됨" : check.state === "unknown" ? "미확인" : "확인 필요"}</span>
+            <div><h3>{t(check.label)}</h3><p>{t(check.detail)}</p><small>{t(check.source)}</small></div><span className={`readiness-state ${check.state}`}>{check.state === "ready" ? t("확인됨") : check.state === "unknown" ? t("미확인") : t("확인 필요")}</span>
           </div>)}</div>
-          <div className="section-header spaced"><div><h2>기존 백그라운드 프로세스</h2><span className="muted">Win32_Process · 기존 supervisor 관리</span></div><LockKeyhole size={16} /></div>
+          <div className="section-header spaced"><div><h2>{t("기존 백그라운드 프로세스")}</h2><span className="muted">{t("Win32_Process · 기존 supervisor 관리")}</span></div><LockKeyhole size={16} /></div>
           {readiness?.process_observation.status === "observed" ? <Facts rows={[
-            ["Supervisor", `${readiness.process_observation.processes.filter(p => p.component === "start_btk_supervisor.ps1").length}개 감지`],
-            ["A2A 응답기", `${readiness.process_observation.processes.filter(p => p.component === "a2a_chat_responder.py").length}개 감지`],
-            ["작업 실행기", `${readiness.process_observation.processes.filter(p => p.component === "run_agent_executor_loop.py").length}개 감지`],
-            ["서비스 관리", "검증된 Supervisor · 앱 실행기 관리"], ["관측 시각", time(readiness.process_observation.observed_at || readiness.observed_at)]
-          ]} /> : <p className="muted setup-loading">{readiness?.process_observation.reason || "관측 중"}</p>}
-          <div className="section-header spaced"><h2>릴리스</h2><PackageCheck size={18} /></div>
-          <Facts rows={[["앱 · 코어 버전", readiness?.release.version], ["빌드", readiness?.release.build_id], ["배포 채널", readiness?.release.channel], ["코어 통신", readiness ? `stdio / v${readiness.release.protocol_version}` : "확인 중"]]} />
+            ["Supervisor", t("{0}개 감지", [readiness.process_observation.processes.filter(p => p.component === "start_btk_supervisor.ps1").length])],
+            [t("A2A 응답기"), t("{0}개 감지", [readiness.process_observation.processes.filter(p => p.component === "a2a_chat_responder.py").length])],
+            [t("작업 실행기"), t("{0}개 감지", [readiness.process_observation.processes.filter(p => p.component === "run_agent_executor_loop.py").length])],
+            [t("서비스 관리"), t("검증된 Supervisor · 앱 실행기 관리")], [t("관측 시각"), time(readiness.process_observation.observed_at || readiness.observed_at)]
+          ]} /> : <p className="muted setup-loading">{readiness?.process_observation.reason || t("관측 중")}</p>}
+          <div className="section-header spaced"><h2>{t("릴리스")}</h2><PackageCheck size={18} /></div>
+          <Facts rows={[[t("앱 · 코어 버전"), readiness?.release.version], [t("빌드"), readiness?.release.build_id], [t("배포 채널"), readiness?.release.channel], [t("코어 통신"), readiness ? `stdio / v${readiness.release.protocol_version}` : t("확인 중")]]} />
         </section>}
         {view === "settings" && (
           <section className="content-page settings-page">
             <div className="section-header">
-              <h2>현재 프로파일</h2>
+              <h2>{t("현재 프로파일")}</h2>
               <span className="mode-label">
-                <LockKeyhole size={13} />
-                조회 전용
-              </span>
+                <LockKeyhole size={13} /> {t("조회 전용")} </span>
             </div>
             <Facts
               rows={[
-                ["프로파일", profile?.name],
-                ["러너", profile?.runner],
-                ["팀", profile?.team_id],
-                ["작업 경로", profile?.workspace],
+                [t("프로파일"), profile?.name],
+                [t("러너"), profile?.runner],
+                [t("팀"), profile?.team_id],
+                [t("작업 경로"), profile?.workspace],
               ]}
             />
             <div className="section-header spaced">
-              <h2>대화 모델</h2>
+              <h2>{t("대화 모델")}</h2>
               <Cpu size={18} />
             </div>
             <Facts
               rows={[
-                ["엔진", snapshot?.model.engine],
-                ["모델", snapshot?.model.model || "엔진 기본값"],
-                ["추론 강도", snapshot?.model.effort || "엔진 기본값"],
-                ["설정 출처", snapshot?.model.source],
-                ["도구 권한", "비활성화"],
-                ["MCP 도구", "비활성화"],
+                [t("엔진"), snapshot?.model.engine],
+                [t("모델"), snapshot?.model.model || t("엔진 기본값")],
+                [t("추론 강도"), snapshot?.model.effort || t("엔진 기본값")],
+                [t("설정 출처"), t(snapshot?.model.source)],
+                [t("도구 권한"), t("비활성화")],
+                [t("MCP 도구"), t("비활성화")],
               ]}
             />
             {snapshot?.chat.reason && (
               <div className="connection-error">
                 <CircleAlert size={18} />
-                <p>{snapshot.chat.reason}</p>
+                <p>{t(snapshot.chat.reason)}</p>
               </div>
             )}
           </section>
@@ -807,15 +794,15 @@ function App({ onModeChange, modeBusy }) {
       </div>
 
       <dialog ref={deleteDialog} className="task-dialog session-dialog" aria-labelledby="delete-session-heading">
-        <div className="dialog-header"><h2 id="delete-session-heading">대화를 삭제할까요?</h2></div>
+        <div className="dialog-header"><h2 id="delete-session-heading">{t("대화를 삭제할까요?")}</h2></div>
         <div className="dialog-body">
           <p>{deleteSession?.title}</p>
           <div className="session-dialog-actions">
-            <button className="outline-button" onClick={() => deleteDialog.current.close()}>취소</button>
+            <button className="outline-button" onClick={() => deleteDialog.current.close()}>{t("취소")}</button>
             <button className="outline-button" disabled={busy} onClick={() => {
               dispatchSession({ type: "remove", id: deleteSession?.id, replacementId: crypto.randomUUID() });
               deleteDialog.current.close(); setDeleteSession(null);
-            }}>삭제</button>
+            }}>{t("삭제")}</button>
           </div>
         </div>
       </dialog>
@@ -828,51 +815,49 @@ function App({ onModeChange, modeBusy }) {
       >
         <div className="dialog-header">
           <div>
-            <span className="eyebrow">실행 상세</span>
+            <span className="eyebrow">{t("실행 상세")}</span>
             <h2>{detail?.task_id}</h2>
           </div>
-          <IconButton label="상세 닫기" onClick={() => dialog.current.close()}>
+          <IconButton label={t("상세 닫기")} onClick={() => dialog.current.close()}>
             <X size={20} />
           </IconButton>
         </div>
         {detailError ? (
           <p role="alert" className="connection-error">
-            {detailError}
+            {errorText(detailError)}
           </p>
         ) : (
           <div className="dialog-body">
             <Status value={detail?.status} />
             <Facts
               rows={[
-                ["러너", detail?.runner_id],
-                ["상태 기준", detail?.authority],
-                ["기록 시각", time(detail?.updated_at)],
+                [t("러너"), detail?.runner_id],
+                [t("상태 기준"), detail?.authority],
+                [t("기록 시각"), time(detail?.updated_at)],
               ]}
             />
             {detail?.reason && (
               <section>
-                <h3>중단 또는 결과 사유</h3>
+                <h3>{t("중단 또는 결과 사유")}</h3>
                 <pre>{detail.reason}</pre>
               </section>
             )}
             {detail?.next_action && (
               <section>
-                <h3>다음 조치</h3>
+                <h3>{t("다음 조치")}</h3>
                 <pre>{detail.next_action}</pre>
               </section>
             )}
             {detail?.loading ? (
               <p className="thinking">
-                <LoaderCircle size={16} className="spin" />
-                기록을 읽는 중입니다.
-              </p>
+                <LoaderCircle size={16} className="spin" /> {t("기록을 읽는 중입니다.")} </p>
             ) : (
               detail?.artifacts?.map((artifact) => (
                 <details key={artifact.name}>
                   <summary>
                     <FileText size={15} />
                     {artifact.name}
-                    {artifact.truncated && <small>일부 표시</small>}
+                    {artifact.truncated && <small>{t("일부 표시")}</small>}
                   </summary>
                   <pre>{artifact.content}</pre>
                 </details>
@@ -885,4 +870,4 @@ function App({ onModeChange, modeBusy }) {
   );
 }
 
-createRoot(document.getElementById("root")).render(<EditionRoot Enterprise={App} />);
+createRoot(document.getElementById("root")).render(<LanguageProvider><EditionRoot Enterprise={App} /></LanguageProvider>);

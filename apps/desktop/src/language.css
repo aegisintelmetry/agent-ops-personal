@@ -1,0 +1,11 @@
+.language-control { flex: 0 0 auto; max-width: 100%; }
+.language-control label { display: flex; align-items: center; gap: 6px; margin: 0; }
+.language-control select { width: 100px; height: 32px; min-width: 0; padding: 4px 6px; border: 1px solid #c9cdd3; border-radius: 4px; color: #202327; background: #fff; font: inherit; font-size: 13px; }
+.language-control small { display: block; max-width: 200px; color: #a3212a; overflow-wrap: anywhere; }
+.topbar .breadcrumb { min-width: 0; }
+.topbar .breadcrumb strong { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .personal-app .topbar { height: auto; min-height: 56px; flex-wrap: wrap; gap: 8px; padding: 8px 12px; }
+  .personal-app .topbar-actions { margin-left: auto; }
+  .personal-app .topbar .personal-local { display: none; }
+}

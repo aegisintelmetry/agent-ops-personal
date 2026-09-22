@@ -1,6 +1,6 @@
 # AEGIS Agent Ops Desktop Preview
 
-Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.4 includes
+Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.5 includes
 the Agent Ops workspace layout, centered composer and independent in-memory chat
 sessions. Sessions and drafts survive navigation, not app restart. The UI does
 not create a persistent session archive; submitted messages and selected history
@@ -80,7 +80,13 @@ Build from `apps/desktop` after `npm ci`:
 powershell -NoProfile -File .\build-windows.ps1
 ```
 
-Output: `release/AEGIS-Agent-Ops-Setup-0.5.4-preview.exe` (Windows x64, NSIS).
+Output: `release/AEGIS-Agent-Ops-Setup-0.5.5-preview.exe` (Windows x64, NSIS).
+
+The language selector on the edition screen and app toolbar supports Korean and
+English. The desktop main process owns `userData/ui-preferences.json`; renderer
+state is derived from that preference at startup and after a successful save.
+Browser-only previews use their own localStorage instead. Language changes do
+not alter model profiles, credentials, conversations, or upstream source text.
 
 The product is licensed under Apache-2.0 with copyright held by aegisintelmetry.
 Packages include `resources/LICENSE`, `resources/NOTICE`, and the existing

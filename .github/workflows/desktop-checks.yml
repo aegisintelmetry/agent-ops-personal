@@ -53,3 +53,5 @@ jobs:
           node tests/agents-ui-smoke.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/stdio-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/language-ui-smoke.cjs

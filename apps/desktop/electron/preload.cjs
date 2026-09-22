@@ -2,6 +2,10 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("btk", {
   native: true,
+  preferences: {
+    read: () => ipcRenderer.invoke('btk:preferences:read'),
+    save: language => ipcRenderer.invoke('btk:preferences:save', { language }),
+  },
   personal: {
     agents: {
       create: (name) => ipcRenderer.invoke("btk:personal:agent_create", { name }),

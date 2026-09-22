@@ -8,6 +8,7 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { Bridge, METHODS } = require("./bridge.cjs");
 const { trustedFrame, bundledResource } = require("./security.cjs");
+const { UiPreferences } = require('./preferences.cjs');
 
 // This utility has no WebGL/video surfaces. Avoid retaining a hardware compositor
 // allocation for a mostly static control window; background work lives outside Electron.
@@ -25,13 +26,23 @@ let slack;
 let codex;
 let agents;
 let personalDialogActive = false;
+let t = text => text;
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
   app.on("second-instance", () => {
     if (window?.isMinimized()) window.restore();
     window?.focus();
   });
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
+    const { translate } = await import('./i18n.mjs');
+    const preferences = new UiPreferences(app.getPath('userData'));
+    t = text => translate(text, preferences.language);
+    for (const method of ['read', 'save']) {
+      ipcMain.handle(`btk:preferences:${method}`, (event, params) => {
+        if (!trustedFrame(event, window, entry)) throw new Error('Untrusted request');
+        return method === 'read' ? preferences.read() : preferences.save(params?.language);
+      });
+    }
     let personalFailure = false;
     try {
       const directory = path.join(app.getPath("userData"), "agent-ops-personal");
@@ -116,8 +127,8 @@ else {
             personalDialogActive = true;
             let answer;
             try {
-              answer = await dialog.showMessageBox(window, { type: "question", title: "모델 연결 시험", buttons: ["취소", "시험"], defaultId: 0, cancelId: 0,
-                message: "저장된 모델로 시험 요청을 보낼까요?", detail: personal.data.connection === "codex" ? "ChatGPT 구독의 Codex 사용 한도가 소비됩니다. 작업 폴더는 전송하지 않습니다." : `${personal.data.endpoint}\n${personal.data.model}\n선택한 주소로 요청이 전송됩니다. 외부 공급자는 API 사용 요금이 발생할 수 있습니다. 작업 폴더는 전송하지 않습니다.` });
+              answer = await dialog.showMessageBox(window, { type: "question", title: t("모델 연결 시험"), buttons: [t("취소"), t("시험")], defaultId: 0, cancelId: 0,
+                message: t("저장된 모델로 시험 요청을 보낼까요?"), detail: personal.data.connection === "codex" ? t("ChatGPT 구독의 Codex 사용 한도가 소비됩니다. 작업 폴더는 전송하지 않습니다.") : `${personal.data.endpoint}\n${personal.data.model}\n${t("선택한 주소로 요청이 전송됩니다. 외부 공급자는 API 사용 요금이 발생할 수 있습니다. 작업 폴더는 전송하지 않습니다.")}` });
             } finally { personalDialogActive = false; }
             if (answer.response !== 1) throw new PersonalError("연결 시험을 취소했습니다.");
             const result = await complete([{ role: "user", content: "Reply with OK." }], { probe: true });
@@ -149,12 +160,12 @@ else {
           setupActive = true;
           try {
             const answer = await dialog.showMessageBox(window, {
-              type: "question", buttons: ["취소", "진행"], defaultId: 0, cancelId: 0,
-              title: "AEGIS Agent Ops 설치 확인",
-              message: method === "agent_start" ? "설치된 에이전트를 백그라운드에서 시작할까요?" : method === "setup_enroll" ? "이 PC를 중앙 프로파일에 연결할까요?" : "필수 도구와 운영 서비스를 설치할까요?",
-              detail: method === "setup_enroll" ? "등록 코드는 중앙 인증에만 사용됩니다. 기존 러너 신원은 바꾸지 않습니다."
-                : method === "agent_start" ? "현재 프로파일의 검증된 런타임만 시작합니다. 창을 닫아도 실행은 유지되며 기존 운영 서비스가 있으면 중복 시작하지 않습니다."
-                : "공식 배포 번들과 필요한 외부 도구를 내려받습니다. 모델 인증과 Windows 권한 승인이 필요할 수 있습니다. 선택한 경우 서비스 시작 및 로그인 시 자동시작을 등록합니다.",
+              type: "question", buttons: [t("취소"), t("계속")], defaultId: 0, cancelId: 0,
+              title: t("AEGIS Agent Ops 설치 확인"),
+              message: method === "agent_start" ? t("설치된 에이전트를 백그라운드에서 시작할까요?") : method === "setup_enroll" ? t("이 PC를 중앙 프로파일에 연결할까요?") : t("필수 도구와 운영 서비스를 설치할까요?"),
+              detail: method === "setup_enroll" ? t("등록 코드는 중앙 인증에만 사용됩니다. 기존 러너 신원은 바꾸지 않습니다.")
+                : method === "agent_start" ? t("현재 프로파일의 검증된 런타임만 시작합니다. 창을 닫아도 실행은 유지되며 기존 운영 서비스가 있으면 중복 시작하지 않습니다.")
+                : t("공식 배포 번들과 필요한 외부 도구를 내려받습니다. 모델 인증과 Windows 권한 승인이 필요할 수 있습니다. 선택한 경우 서비스 시작 및 로그인 시 자동시작을 등록합니다."),
             });
             if (answer.response !== 1) throw new Error("사용자가 취소했습니다.");
             const result = await bridge.call(method, params);
@@ -217,7 +228,7 @@ else {
     created.on("close", (event) => {
       if (setupActive) {
         event.preventDefault();
-        dialog.showMessageBox(created, { type: "info", message: "설치가 진행 중입니다.", detail: "완료 또는 실패 결과를 확인한 뒤 닫을 수 있습니다." });
+        dialog.showMessageBox(created, { type: "info", message: t("설치가 진행 중입니다."), detail: t("완료 또는 실패 결과를 확인한 뒤 닫을 수 있습니다.") });
       }
     });
   });

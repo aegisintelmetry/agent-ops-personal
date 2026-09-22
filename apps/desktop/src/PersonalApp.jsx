@@ -1,3 +1,4 @@
+import { useI18n, LanguageSelect } from "./Language";
 import React, { useEffect, useReducer, useState } from "react";
 import { ArrowUp, Check, CircleAlert, Cpu, FolderOpen, KeyRound, LoaderCircle, MessageSquare, PanelLeft, PanelRight, Plug, Plus, Save, Settings2, Shield, Square, Trash2, Workflow, X } from "lucide-react";
 import RunSummary from "./RunSummary";
@@ -13,6 +14,7 @@ function ButtonIcon({ label, children, ...props }) {
 }
 
 export function EditionRoot({ Enterprise }) {
+  const { t, locale, errorText } = useI18n();
   const [state, setState] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -29,29 +31,32 @@ export function EditionRoot({ Enterprise }) {
     finally { setBusy(false); }
   }
   if (!supported) return <Enterprise />;
-  if (loading) return <div className="edition-choice" role="status">설정 확인 중</div>;
-  if (state?.mode === "personal") return <PersonalApp initial={state} onModeChange={() => select("enterprise")} modeBusy={busy} modeError={error} />;
-  if (state?.mode === "enterprise") return <><Enterprise onModeChange={() => select("personal")} modeBusy={busy} />{error && <p className="mode-error" role="alert">{error}</p>}</>;
+  if (loading) return <div className="edition-choice" role="status">{t("설정 확인 중")}</div>;
+  if (state?.mode === "personal") return <PersonalApp initial={state} onModeChange={() => select("enterprise")} modeBusy={busy} modeError={errorText(error)} />;
+  if (state?.mode === "enterprise") return <><Enterprise onModeChange={() => select("personal")} modeBusy={busy} />{error && <p className="mode-error" role="alert">{errorText(error)}</p>}</>;
   return <main className="edition-choice">
+    <LanguageSelect />
     <Workflow size={36} className="workspace-logo" /><h1>AEGIS Agent Ops</h1>
-    <div className="edition-options" role="group" aria-label="실행 모드">
-      <button disabled={busy || !state} onClick={() => select("personal")}><MonitorMark /><strong>개인용</strong><span>Personal</span></button>
-      <button disabled={busy || !state} onClick={() => select("enterprise")}><Shield size={25} /><strong>조직 연결</strong><span>Enterprise</span></button>
+    <div className="edition-options" role="group" aria-label={t("실행 모드")}>
+      <button disabled={busy || !state} onClick={() => select("personal")}><MonitorMark /><strong>{t("개인용")}</strong><span>Personal</span></button>
+      <button disabled={busy || !state} onClick={() => select("enterprise")}><Shield size={25} /><strong>{t("조직 연결")}</strong><span>Enterprise</span></button>
     </div>
-    {error && <p role="alert">{error}</p>}
+    {error && <p role="alert">{errorText(error)}</p>}
   </main>;
 }
 function MonitorMark() { return <Cpu size={25} />; }
 
 function AgentName({ state, busy, run, onSaved }) {
-  const [name, setName] = useState(state.agentName || "기본 에이전트");
+  const { t, locale, errorText } = useI18n();
+  const [name, setName] = useState(state.agentName || t("기본 에이전트"));
   return <form className="personal-agent-name" onSubmit={event => { event.preventDefault(); run(async () => onSaved(await native().agents.rename(name))); }}>
-    <label>에이전트 이름<input required maxLength={60} value={name} disabled={busy} onChange={event => setName(event.target.value)} /></label>
-    <button type="submit" className="outline-button" disabled={busy || !name.trim() || name.trim() === state.agentName}><Save size={16} />이름 저장</button>
+    <label>{t("에이전트 이름")}<input required maxLength={60} value={name} disabled={busy} onChange={event => setName(event.target.value)} /></label>
+    <button type="submit" className="outline-button" disabled={busy || !name.trim() || name.trim() === state.agentName}><Save size={16} />{t("이름 저장")}</button>
   </form>;
 }
 
 function ModelSettings({ state, busy, run, onSaved }) {
+  const { t, locale, errorText } = useI18n();
   const [form, setForm] = useState({ provider: state.provider, endpoint: state.endpoint, model: state.model, maxTokens: state.maxTokens, apiKey: "" });
   const [notice, setNotice] = useState("");
   const [dirty, setDirty] = useState(false);
@@ -74,34 +79,35 @@ function ModelSettings({ state, busy, run, onSaved }) {
     input.apiKey = "";
   }
   return <section className="personal-settings">
-    <h1>모델 연결</h1>
+    <h1>{t("모델 연결")}</h1>
     <form onSubmit={save}>
       <fieldset disabled={busy}>
-        <label>공급자<select aria-label="공급자" value={form.provider} onChange={e => provider(e.target.value)}>
-          {providers.map(item => <option key={item.id} value={item.id}>{item.label}</option>)}
+        <label>{t("공급자")}<select aria-label={t("공급자")} value={form.provider} onChange={e => provider(e.target.value)}>
+          {providers.map(item => <option key={item.id} value={item.id}>{t(item.label)}</option>)}
         </select></label>
-        <label>API 주소<input type="url" required value={form.endpoint} readOnly={preset?.fixedEndpoint} placeholder="https://model.example.com/v1" onChange={e => field("endpoint", e.target.value)} /></label>
-        <label>모델 ID<input required maxLength={200} value={form.model} onChange={e => field("model", e.target.value)} autoComplete="off" /></label>
-        <label>API 키<input type="password" value={form.apiKey} maxLength={8192} autoComplete="new-password" spellCheck={false} placeholder={state.keyConfigured && form.endpoint === state.endpoint && form.provider === state.provider ? "저장된 키 유지" : form.provider === "local" ? "선택 사항" : "API 키"} onChange={e => field("apiKey", e.target.value)} /></label>
-        <div className="personal-key-state"><KeyRound size={15} /><span>{matchingKey ? "키 저장됨" : "키 미등록"}</span><span>{state.secureStorage ? "OS 암호화 사용 가능" : "보안 저장소 사용 불가"}</span></div>
-        <label>최대 출력 토큰<input type="number" min={64} max={16384} step={1} required value={form.maxTokens} onChange={e => field("maxTokens", Number(e.target.value))} /></label>
+        <label>{t("API 주소")}<input type="url" required value={form.endpoint} readOnly={preset?.fixedEndpoint} placeholder="https://model.example.com/v1" onChange={e => field("endpoint", e.target.value)} /></label>
+        <label>{t("모델 ID")}<input required maxLength={200} value={form.model} onChange={e => field("model", e.target.value)} autoComplete="off" /></label>
+        <label>{t("API 키")}<input type="password" value={form.apiKey} maxLength={8192} autoComplete="new-password" spellCheck={false} placeholder={state.keyConfigured && form.endpoint === state.endpoint && form.provider === state.provider ? t("저장된 키 유지") : form.provider === "local" ? t("선택 사항") : t("API 키")} onChange={e => field("apiKey", e.target.value)} /></label>
+        <div className="personal-key-state"><KeyRound size={15} /><span>{matchingKey ? t("키 저장됨") : t("키 미등록")}</span><span>{state.secureStorage ? t("OS 암호화 사용 가능") : t("보안 저장소 사용 불가")}</span></div>
+        <label>{t("최대 출력 토큰")}<input type="number" min={64} max={16384} step={1} required value={form.maxTokens} onChange={e => field("maxTokens", Number(e.target.value))} /></label>
         <div className="personal-actions">
-          <button type="submit" className="outline-button"><Save size={16} />저장</button>
+          <button type="submit" className="outline-button"><Save size={16} />{t("저장")}</button>
           <button type="button" className="outline-button" disabled={dirty || !state.model} onClick={() => run(async () => {
             const result = await native().test();
-            setNotice(`${result.status === "completed" ? "연결 확인" : "응답 수신 · 출력 불완전"} · ${new Date(result.checkedAt).toLocaleTimeString("ko-KR")}`);
-          })}><Check size={16} />연결 시험</button>
-          <ButtonIcon label="저장된 키 삭제" disabled={!matchingKey} onClick={() => run(async () => {
+            setNotice({ key: result.status === "completed" ? "연결 확인" : "응답 수신 · 출력 불완전", at: result.checkedAt });
+          })}><Check size={16} />{t("연결 시험")}</button>
+          <ButtonIcon label={t("저장된 키 삭제")} disabled={!matchingKey} onClick={() => run(async () => {
             onSaved(await native().removeKey()); setNotice("키 삭제됨");
           })}><Trash2 size={16} /></ButtonIcon>
         </div>
       </fieldset>
     </form>
-    {notice && <p className="personal-notice" role="status">{notice}</p>}
+    {notice && <p className="personal-notice" role="status">{typeof notice === 'string' ? t(notice) : `${t(notice.key)} · ${new Date(notice.at).toLocaleTimeString(locale)}`}</p>}
   </section>;
 }
 
 function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
+  const { t, locale, errorText } = useI18n();
   const [state, setState] = useState(initial);
   const [view, setView] = useState(initial.model ? "chat" : "settings");
   const [busy, setBusy] = useState(false);
@@ -169,43 +175,43 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
     finally { setChatBusy(false); }
   }
   return <div className={`app workspace-app personal-app ${navOpen ? "nav-open" : "nav-closed"}`}>
-    {navOpen && <button className="personal-nav-scrim" aria-label="탐색 닫기" onClick={() => setNavOpen(false)} />}
+    {navOpen && <button className="personal-nav-scrim" aria-label={t("탐색 닫기")} onClick={() => setNavOpen(false)} />}
     <aside className="sidebar">
       <div className="brand"><span className="brand-symbol"><Workflow size={21} /></span><div>AEGIS<small>Agent Ops Personal</small></div></div>
-      <button className="new-chat" disabled={locked || sessions.items.length >= MAX_SESSIONS} onClick={() => { dispatch({ type: "create", id: crypto.randomUUID() }); navigate("chat"); }}><Plus size={17} />새 대화</button>
-      <nav aria-label="개인용 탐색">
-        <button className={view === "chat" ? "active" : ""} disabled={busy} onClick={() => navigate("chat")}><MessageSquare size={18} />작업 공간</button>
-        <button className={view === "settings" ? "active" : ""} disabled={locked} onClick={() => navigate("settings")}><Settings2 size={18} />모델 연결</button>
-        <button className={view === "connectors" ? "active" : ""} disabled={locked} onClick={() => navigate("connectors")}><Plug size={18} />커넥터</button>
-        <button disabled={locked} onClick={() => run(async () => { const result = await native().folder(); if (result.workspace !== state.workspace) saved(result); })}><FolderOpen size={18} />작업 폴더</button>
+      <button className="new-chat" disabled={locked || sessions.items.length >= MAX_SESSIONS} onClick={() => { dispatch({ type: "create", id: crypto.randomUUID() }); navigate("chat"); }}><Plus size={17} />{t("새 대화")}</button>
+      <nav aria-label={t("개인용 탐색")}>
+        <button className={view === "chat" ? "active" : ""} disabled={busy} onClick={() => navigate("chat")}><MessageSquare size={18} />{t("작업 공간")}</button>
+        <button className={view === "settings" ? "active" : ""} disabled={locked} onClick={() => navigate("settings")}><Settings2 size={18} />{t("모델 연결")}</button>
+        <button className={view === "connectors" ? "active" : ""} disabled={locked} onClick={() => navigate("connectors")}><Plug size={18} />{t("커넥터")}</button>
+        <button disabled={locked} onClick={() => run(async () => { const result = await native().folder(); if (result.workspace !== state.workspace) saved(result); })}><FolderOpen size={18} />{t("작업 폴더")}</button>
       </nav>
-      <section className="session-list" aria-label="개인 대화 세션"><h2>세션 <span>{sessions.items.length}</span></h2>
+      <section className="session-list" aria-label={t("개인 대화 세션")}><h2>{t("세션")} <span>{sessions.items.length}</span></h2>
         {sessions.items.map(item => <div key={item.id} className={`session-row ${item.id === selected.id ? "selected" : ""}`}>
-          <button className="session-select" disabled={locked} title={item.title} onClick={() => { dispatch({ type: "select", id: item.id }); navigate("chat"); }}><MessageSquare size={15} /><span>{item.title}</span></button>
-          <ButtonIcon label={`${item.title} 삭제`} disabled={locked} onClick={() => { if (window.confirm("이 대화를 삭제할까요?")) dispatch({ type: "remove", id: item.id, replacementId: crypto.randomUUID() }); }}><X size={13} /></ButtonIcon>
+          <button className="session-select" disabled={locked} title={item.messages.length ? item.title : t("새 대화")} onClick={() => { dispatch({ type: "select", id: item.id }); navigate("chat"); }}><MessageSquare size={15} /><span>{item.messages.length ? item.title : t("새 대화")}</span></button>
+          <ButtonIcon label={t("{0} 삭제", [item.title])} disabled={locked} onClick={() => { if (window.confirm(t("이 대화를 삭제할까요?"))) dispatch({ type: "remove", id: item.id, replacementId: crypto.randomUUID() }); }}><X size={13} /></ButtonIcon>
         </div>)}
       </section>
-      <div className="sidebar-bottom"><button className="outline-button" disabled={locked} onClick={onModeChange}><Shield size={16} />조직 연결</button></div>
+      <div className="sidebar-bottom"><button className="outline-button" disabled={locked} onClick={onModeChange}><Shield size={16} />{t("조직 연결")}</button></div>
     </aside>
     <main className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><ButtonIcon label="탐색 표시" aria-expanded={navOpen} onClick={() => setNavOpen(value => !value)}><PanelLeft size={17} /></ButtonIcon><span>Personal</span><strong>{view === "settings" ? "모델 연결" : view === "connectors" ? "커넥터" : "작업 공간"}</strong></div><div className="topbar-actions"><span className="personal-local">중앙 연결 없음</span>{view === "chat" && <ButtonIcon label="실행 요약 표시" aria-pressed={showSummary} onClick={() => setShowSummary(value => !value)}><PanelRight size={17} /></ButtonIcon>}</div></header>
-      {(error || modeError) && <div className="personal-error" role="alert"><CircleAlert size={17} /><span>{error || modeError}</span></div>}
-      <div className="personal-agent-bar"><label>에이전트<select aria-label="에이전트" disabled={locked} value={agentId} onChange={event => { const id = event.target.value; run(async () => agentChanged(await native().agents.select(id))); }}>{(state.agents || [{ id: "default", name: "기본 에이전트" }]).map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select></label><ButtonIcon label="에이전트 추가" disabled={locked || (state.agents?.length || 1) >= 20} onClick={() => run(async () => agentChanged(await native().agents.create("새 에이전트")))}><Plus size={18} /></ButtonIcon><span>{state.model || "모델 미설정"}</span></div>
-      {view === "settings" ? <div className="personal-settings-scroll"><AgentName key={agentId} state={state} busy={locked} run={run} onSaved={setState} /><div className="personal-connection"><label>연결 방식<select aria-label="연결 방식" value={state.connection || "api"} disabled={locked} onChange={event => { const value = event.target.value; run(async () => saved(await native().connection(value))); }}><option value="api">API 키 / 로컬 모델</option><option value="codex">ChatGPT 로그인</option></select></label></div>{state.connection === "codex" ? <CodexSettings key={agentId} state={state} busy={locked} run={run} onSaved={saved} /> : <ModelSettings key={`${agentId}:${state.connection || "api"}`} state={state} busy={locked} run={run} onSaved={saved} />}</div> : view === "connectors" ? <div className="personal-settings-scroll"><SlackPanel key={agentId} state={slack} onState={setSlack} busy={locked} run={run} /></div> :
+      <header className="topbar"><div className="breadcrumb"><ButtonIcon label={t("탐색 표시")} aria-expanded={navOpen} onClick={() => setNavOpen(value => !value)}><PanelLeft size={17} /></ButtonIcon><span>Personal</span><strong>{view === "settings" ? t("모델 연결") : view === "connectors" ? t("커넥터") : t("작업 공간")}</strong></div><div className="topbar-actions"><LanguageSelect /><span className="personal-local">{t("중앙 연결 없음")}</span>{view === "chat" && <ButtonIcon label={t("실행 요약 표시")} aria-pressed={showSummary} onClick={() => setShowSummary(value => !value)}><PanelRight size={17} /></ButtonIcon>}</div></header>
+      {(error || modeError) && <div className="personal-error" role="alert"><CircleAlert size={17} /><span>{errorText(error || modeError)}</span></div>}
+      <div className="personal-agent-bar"><label>{t("에이전트")}<select aria-label={t("에이전트")} disabled={locked} value={agentId} onChange={event => { const id = event.target.value; run(async () => agentChanged(await native().agents.select(id))); }}>{(state.agents || [{ id: "default", name: t("기본 에이전트") }]).map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select></label><ButtonIcon label={t("에이전트 추가")} disabled={locked || (state.agents?.length || 1) >= 20} onClick={() => run(async () => agentChanged(await native().agents.create(t("새 에이전트"))))}><Plus size={18} /></ButtonIcon><span>{state.model || t("모델 미설정")}</span></div>
+      {view === "settings" ? <div className="personal-settings-scroll"><AgentName key={agentId} state={state} busy={locked} run={run} onSaved={setState} /><div className="personal-connection"><label>{t("연결 방식")}<select aria-label={t("연결 방식")} value={state.connection || "api"} disabled={locked} onChange={event => { const value = event.target.value; run(async () => saved(await native().connection(value))); }}><option value="api">{t("API 키 / 로컬 모델")}</option><option value="codex">{t("ChatGPT 로그인")}</option></select></label></div>{state.connection === "codex" ? <CodexSettings key={agentId} state={state} busy={locked} run={run} onSaved={saved} /> : <ModelSettings key={`${agentId}:${state.connection || "api"}`} state={state} busy={locked} run={run} onSaved={saved} />}</div> : view === "connectors" ? <div className="personal-settings-scroll"><SlackPanel key={agentId} state={slack} onState={setSlack} busy={locked} run={run} /></div> :
         <div className={`personal-workspace ${showSummary ? "with-summary" : ""}`}>
         <section className="personal-chat">
-          <div className="personal-context"><FolderOpen size={15} /><span title={state.workspace}>{state.workspace || "작업 폴더 미선택"}</span><small>파일 접근 비활성</small></div>
-          <div className="personal-transcript" role="log" aria-label="개인 대화">
-            {!selected.messages.length && <div className="personal-empty"><Workflow size={32} className="workspace-logo" /><h1>AEGIS Agent Ops</h1><span>{state.model || "모델 미연결"}</span></div>}
-            {selected.messages.map(row => <article className={`personal-message ${row.role}`} key={row.id}><strong>{row.role === "user" ? "나" : state.model}</strong><p>{row.content}</p>{row.state === "partial" && <small>응답 불완전</small>}{row.usage && <small>토큰 {row.usage.total_tokens ?? "미제공"}</small>}</article>)}
-            {chatBusy && <div className="personal-pending" role="status"><LoaderCircle size={16} className="spin" />응답 대기 중</div>}
+          <div className="personal-context"><FolderOpen size={15} /><span title={state.workspace}>{state.workspace || t("작업 폴더 미선택")}</span><small>{t("파일 접근 비활성")}</small></div>
+          <div className="personal-transcript" role="log" aria-label={t("개인 대화")}>
+            {!selected.messages.length && <div className="personal-empty"><Workflow size={32} className="workspace-logo" /><h1>AEGIS Agent Ops</h1><span>{state.model || t("모델 미연결")}</span></div>}
+            {selected.messages.map(row => <article className={`personal-message ${row.role}`} key={row.id}><strong>{row.role === "user" ? t("나") : state.model}</strong><p>{row.content}</p>{row.state === "partial" && <small>{t("응답 불완전")}</small>}{row.usage && <small>{t("토큰")} {row.usage.total_tokens ?? t("미제공")}</small>}</article>)}
+            {chatBusy && <div className="personal-pending" role="status"><LoaderCircle size={16} className="spin" />{t("응답 대기 중")}</div>}
           </div>
-          <form className="composer" onSubmit={send}><textarea aria-label="개인 메시지" maxLength={16000} disabled={locked} value={selected.draft} onChange={e => dispatch({ type: "draft", id: selected.id, value: e.target.value })} />
-            <div className="composer-bottom"><span>{state.model || "모델 미연결"}</span>{chatBusy ? <ButtonIcon label="개인 답변 중단" onClick={() => native().cancel().catch(e => setError(e.message))}><Square size={16} /></ButtonIcon> : <button className="send" aria-label="개인 메시지 전송" title="전송" disabled={locked || !state.model || !selected.draft.trim() || (!state.keyConfigured && !["local", "codex"].includes(state.provider))}><ArrowUp size={18} /></button>}</div>
+          <form className="composer" onSubmit={send}><textarea aria-label={t("개인 메시지")} maxLength={16000} disabled={locked} value={selected.draft} onChange={e => dispatch({ type: "draft", id: selected.id, value: e.target.value })} />
+            <div className="composer-bottom"><span>{state.model || t("모델 미연결")}</span>{chatBusy ? <ButtonIcon label={t("개인 답변 중단")} onClick={() => native().cancel().catch(e => setError(e.message))}><Square size={16} /></ButtonIcon> : <button className="send" aria-label={t("개인 메시지 전송")} title={t("전송")} disabled={locked || !state.model || !selected.draft.trim() || (!state.keyConfigured && !["local", "codex"].includes(state.provider))}><ArrowUp size={18} /></button>}</div>
           </form>
-          <div className="personal-destination"><span title={state.endpoint}>{state.endpoint || "API 주소 미설정"}</span><span>도구 실행 비활성</span></div>
+          <div className="personal-destination"><span title={state.endpoint}>{state.endpoint || t("API 주소 미설정")}</span><span>{t("도구 실행 비활성")}</span></div>
         </section>
-        {showSummary && <><button className="personal-summary-scrim" aria-label="실행 요약 닫기" onClick={() => setShowSummary(false)} /><RunSummary state={state} session={selected} slack={slack} onConnectors={() => { if (!locked) navigate("connectors"); }} /></>}
+        {showSummary && <><button className="personal-summary-scrim" aria-label={t("실행 요약 닫기")} onClick={() => setShowSummary(false)} /><RunSummary state={state} session={selected} slack={slack} onConnectors={() => { if (!locked) navigate("connectors"); }} /></>}
         </div>}
     </main>
   </div>;
