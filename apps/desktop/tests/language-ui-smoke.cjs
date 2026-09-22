@@ -91,6 +91,10 @@ async function viewport(page, width, height, name) {
   page = await launch();
   assert.equal(await page.locator('html').getAttribute('lang'), 'en');
   await page.getByRole('button', { name: 'Model connection', exact: true }).click();
+  await app.evaluate(({ app }) => {
+    const { CodexConnection } = process.mainModule.require(app.getAppPath() + '/electron/codex.cjs');
+    CodexConnection.prototype.state = async () => ({ connected: false, pending: false, plan: '', error: '' });
+  });
   await page.getByLabel('Connection method', { exact: true }).selectOption('codex');
   await page.getByRole('heading', { name: 'ChatGPT connection', exact: true }).waitFor();
   await page.getByRole('button', { name: 'Sign in with ChatGPT', exact: true }).waitFor();
