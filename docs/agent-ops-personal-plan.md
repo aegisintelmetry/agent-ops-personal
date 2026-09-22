@@ -8,8 +8,8 @@ Personal은 로컬 제품, Enterprise는 조직 연결 클라우드 제품, Aegi
 
 ## 기능 참고
 
-후속 [Eigent 상세 벤치마킹](agent-ops-eigent-benchmark.md)에 공개 소스의 Codex 구독 인증,
-현재 Personal과의 차이, 적용 순서와 검증 조건을 정리했다.
+당시 별도 내부 벤치마킹 기록에 공개 소스의 Codex 구독 인증,
+Personal과의 차이, 적용 순서와 검증 조건을 정리했다. 해당 내부 기록은 공개 범위에 포함하지 않는다.
 후속 [ChatGPT 연결 구현/검증](agent-ops-personal-codex.md)은 소스 미리보기에 반영했다.
 실제 계정 로그인과 구독 응답 확인은 남아 있다.
 DeepSeek/Kimi/Gemini API 프리셋은 [추가 공급자 구현 기록](agent-ops-personal-providers.md)을 따른다.
