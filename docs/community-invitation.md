@@ -43,6 +43,8 @@ Windows 사용자, 개발자, 보안 실무자 5~10명부터 피드백을 받고
 
 ## 시작하기
 
+[모집 토론에 참여하기 / Join the recruitment discussion](https://github.com/aegisintelmetry/agent-ops-public-preview/discussions/3)
+
 - [설치·현재 지원 범위](https://github.com/aegisintelmetry/agent-ops-public-preview#readme)
 - [다운로드](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.10-preview)
 - [질문과 제안](https://github.com/aegisintelmetry/agent-ops-public-preview/discussions)

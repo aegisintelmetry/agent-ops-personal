@@ -61,7 +61,14 @@ interpret successful CI as proof that the downloadable installer was built by CI
 
 ## Signing and Evidence Policy
 
-Signing is not enabled by this documentation change. Before describing future
+The community documentation commit
+[`b378145`](https://github.com/aegisintelmetry/agent-ops-public-preview/commit/b378145a172f87e5a561d0b84575a363487f8eee)
+was created through GitHub's commit API. GitHub's verification endpoint returned
+`verified: true`, `reason: valid`. This is a GitHub-managed commit signature,
+not an independently managed publisher key, signed release tag, or Windows installer signature.
+It does not retroactively sign older commits or certify legal authorship.
+
+Local key-based signing is not enabled by this documentation change. Before describing future
 releases as signed, maintainers must:
 
 1. Select a signing identity and keep private keys outside Git.
