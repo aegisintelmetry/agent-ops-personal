@@ -1,7 +1,11 @@
 # AEGIS Agent Ops
 
 AEGIS Agent Ops Personal / Enterprise 제품 소스 저장소입니다. 공개 준비 중이며 아직 비공개입니다.
-현재 범위는 **Personal 데스크톱 0.5.9 프리뷰와 독립 제품 코어**입니다.
+현재 범위는 **Personal 데스크톱 0.5.10 프리뷰와 독립 제품 코어**입니다.
+
+0.5.10은 [Google Gemini API 로그인과 공유 연결 계정](docs/personal-google-accounts.md)을
+추가합니다. Google 데스크톱 OAuth 클라이언트 등록이 필요하며 Gemini 웹 구독 연결은 아닙니다.
+실제 계정 인증/추론 검증은 별도입니다. 기존 API 키와 Codex 연결은 유지합니다.
 Enterprise 웹/제어 모듈과 운영 러너 전체의 이전이 완료된 것은 아닙니다.
 AEGIS 보안 제품은 Enterprise 전용 별도 모듈이며 이 저장소에 포함하지 않습니다.
 

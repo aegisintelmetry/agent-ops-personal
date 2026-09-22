@@ -4,6 +4,7 @@ import { ArrowUp, Check, CircleAlert, Cpu, FolderOpen, KeyRound, LoaderCircle, M
 import RunSummary from "./RunSummary";
 import SlackPanel from "./SlackPanel";
 import CodexSettings from "./CodexSettings";
+import GoogleSettings from './GoogleSettings';
 import TeamPanel from './TeamPanel';
 import KnowledgePanel from './KnowledgePanel';
 import providers from "../electron/providers.json";
@@ -119,8 +120,8 @@ function AgentEditor({ state, busy, run, onSaved, onRenamed }) {
     </div>
     {tab !== 'model' ? <KnowledgePanel key={`${id}:${tab}`} agentId={id} tab={tab} busy={busy} /> : <>
     <AgentName key={`name:${id}`} state={state} busy={busy} run={run} onSaved={onRenamed} />
-    <div className="personal-connection"><label>{t('연결 방식')}<select aria-label={t('연결 방식')} value={state.connection || 'api'} disabled={busy} onChange={event => { const value = event.target.value; run(async () => onSaved(await native().connection(value))); }}><option value="api">{t('API 키 / 로컬 모델')}</option><option value="codex">{t('ChatGPT 로그인')}</option></select></label></div>
-    {state.connection === 'codex' ? <CodexSettings key={`codex:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} /> : <ModelSettings key={`model:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} />}
+    <div className="personal-connection"><label>{t('연결 방식')}<select aria-label={t('연결 방식')} value={state.connection || 'api'} disabled={busy} onChange={event => { const value = event.target.value; run(async () => onSaved(await native().connection(value))); }}><option value="api">{t('API 키 / 로컬 모델')}</option><option value="codex">{t('ChatGPT 로그인')}</option><option value="google">{t('Google 로그인 · Gemini API')}</option></select></label></div>
+    {state.connection === 'google' ? <GoogleSettings key={`google:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} /> : state.connection === 'codex' ? <CodexSettings key={`codex:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} /> : <ModelSettings key={`model:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} />}
     </>}
   </>;
 }

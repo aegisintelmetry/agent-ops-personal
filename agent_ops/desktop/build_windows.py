@@ -28,11 +28,28 @@ def verify_product_boundary(root=ROOT):
 
 def third_party_notices(app=APP, python_root=None):
     sections = ["AEGIS Agent Ops - third-party notices\nGenerated from installed build dependencies.\n"]
-    for name in ("react", "react-dom", "scheduler", "lucide-react"):
-        directory = app / "node_modules" / name
+    lock = json.loads((app / 'package-lock.json').read_text(encoding='utf-8'))
+    for relative, info in sorted(lock['packages'].items()):
+        if not relative or info.get('dev'):
+            continue
+        directory = (app / relative).resolve()
+        if not directory.is_relative_to((app / 'node_modules').resolve()):
+            raise ValueError('Dependency license path escapes node_modules')
         package = json.loads((directory / "package.json").read_text(encoding="utf-8"))
-        license_text = (directory / "LICENSE").read_text(encoding="utf-8")
-        sections.append(f"\n## {name} {package['version']}\n\n{license_text}")
+        licenses = [file for file in directory.iterdir() if file.is_file()
+                    and file.name.lower().startswith(('license', 'licence', 'copying', 'notice'))]
+        # Some npm tarballs carry the complete MIT notice only in their README.
+        if not licenses and package.get('license') == 'MIT':
+            readme = directory / 'README.md'
+            text = readme.read_text(encoding='utf-8') if readme.exists() else ''
+            if all(marker in text for marker in ('Copyright', 'Permission is hereby granted',
+                                                 'THE SOFTWARE IS PROVIDED', 'SOFTWARE OR THE USE')):
+                licenses = [readme]
+        if not licenses:
+            raise ValueError(f'Missing third-party license: {relative}')
+        for file in sorted(licenses):
+            license_text = file.read_text(encoding='utf-8')
+            sections.append(f"\n## {package.get('name', relative)} {package['version']} / {file.name}\n\n{license_text}")
     electron = app / "node_modules/electron"
     for name in ("LICENSE", "LICENSES.chromium.html"):
         sections.append(f"\n## Electron / {name}\n\n" + (electron / "dist" / name).read_text(encoding="utf-8"))

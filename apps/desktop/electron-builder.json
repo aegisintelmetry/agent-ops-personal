@@ -5,7 +5,7 @@
   "asar": true,
   "afterPack": "./after-pack.cjs",
   "directories": { "output": "release" },
-  "files": ["dist/**", "electron/**", "package.json", "!node_modules/**"],
+  "files": ["dist/**", "electron/**", "package.json"],
   "extraResources": [
     { "from": "../../LICENSE", "to": "LICENSE" },
     { "from": "../../NOTICE", "to": "NOTICE" },

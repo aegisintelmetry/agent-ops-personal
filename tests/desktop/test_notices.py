@@ -13,7 +13,11 @@ class NoticesTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
-        for name in ('react', 'react-dom', 'scheduler', 'lucide-react'):
+        names = ('react', 'react-dom', 'scheduler', 'lucide-react', 'google-auth-library', 'gaxios')
+        (self.root / 'package-lock.json').write_text(json.dumps({'packages': {
+            **{f'node_modules/{name}': {} for name in names},
+            'node_modules/dev-only': {'dev': True}, '': {}}}))
+        for name in names:
             folder = self.root / 'node_modules' / name
             folder.mkdir(parents=True)
             (folder / 'package.json').write_text(json.dumps({'version': '1.0.0'}))
@@ -30,10 +34,25 @@ class NoticesTest(unittest.TestCase):
                                        locate_file=lambda file: self.root / file)
         with patch('agent_ops.desktop.build_windows.importlib.metadata.distribution', return_value=distribution):
             text = third_party_notices(self.root, self.root)
-        for name in ('react', 'react-dom', 'scheduler', 'lucide-react', 'Python runtime', 'PyYAML', 'pyinstaller'):
+        for name in ('react', 'react-dom', 'scheduler', 'lucide-react', 'google-auth-library', 'gaxios', 'Python runtime', 'PyYAML', 'pyinstaller'):
             self.assertIn(name, text)
         self.assertIn('fixture copyright and license', text)
         self.assertIn('fixture distribution notice', text)
+        self.assertNotIn('dev-only', text)
+
+    def test_missing_oauth_dependency_license_stops_packaging(self):
+        (self.root / 'node_modules/google-auth-library/LICENSE').unlink()
+        with self.assertRaisesRegex(ValueError, 'Missing third-party license'):
+            third_party_notices(self.root, self.root)
+
+    def test_embedded_mit_notice_is_preserved(self):
+        folder = self.root / 'node_modules/gaxios'
+        (folder / 'LICENSE').unlink()
+        (folder / 'package.json').write_text(json.dumps({'version': '1.0.0', 'license': 'MIT'}))
+        (folder / 'README.md').write_text('Copyright fixture\nPermission is hereby granted\nTHE SOFTWARE IS PROVIDED\nSOFTWARE OR THE USE')
+        distribution = SimpleNamespace(version='1.0.0', files=[Path('LICENSE')], locate_file=lambda file: self.root / file)
+        with patch('agent_ops.desktop.build_windows.importlib.metadata.distribution', return_value=distribution):
+            self.assertIn('Copyright fixture', third_party_notices(self.root, self.root))
 
     def test_missing_distribution_license_stops_packaging(self):
         with patch('agent_ops.desktop.build_windows.importlib.metadata.distribution',

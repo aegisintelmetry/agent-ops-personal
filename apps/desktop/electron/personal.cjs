@@ -42,7 +42,8 @@ async function boundedJson(response) {
 }
 
 class PersonalService {
-  constructor({ directory, safeStorage, fetchImpl = fetch, timeoutMs = 120000 }) {
+  constructor({ directory, safeStorage, fetchImpl = fetch, timeoutMs = 120000, googleAccounts }) {
+    this.googleAccounts = googleAccounts;
     this.file = path.join(directory, "personal.json");
     this.safeStorage = safeStorage;
     this.fetch = fetchImpl;
@@ -63,7 +64,10 @@ class PersonalService {
   }
   state() {
     const { mode, provider, endpoint, model, workspace, maxTokens, encryptedKey } = this.data;
-    const connection = this.data.connection === "codex" ? "codex" : "api";
+    const connection = ['codex', 'google'].includes(this.data.connection) ? this.data.connection : 'api';
+    if (connection === 'google') return { mode, provider: 'gemini', endpoint: 'https://generativelanguage.googleapis.com', model: this.data.googleModel || '', connection, workspace,
+      maxTokens: this.data.googleMaxTokens || 1024, accountId: this.data.googleAccountId || '', keyConfigured: false,
+      accountConfigured: Boolean(this.googleAccounts?.has(this.data.googleAccountId)), secureStorage: this.encryptionAvailable() };
     return { mode, provider: connection === "codex" ? "codex" : provider, endpoint: connection === "codex" ? "ChatGPT / Codex" : endpoint,
       model: connection === "codex" ? this.data.codexModel || "" : model, connection, workspace, maxTokens,
       keyConfigured: connection === "api" && Boolean(encryptedKey), secureStorage: this.encryptionAvailable() };
@@ -82,13 +86,20 @@ class PersonalService {
   idle() { if (this.active || this.connectorActive || this.codexActive) fail("진행 중인 요청을 먼저 중단해 주세요."); }
   connection(value) {
     this.idle();
-    if (!["api", "codex"].includes(value)) fail("지원하지 않는 연결 방식입니다.");
+    if (!["api", "codex", "google"].includes(value)) fail("지원하지 않는 연결 방식입니다.");
     return this.write({ ...this.data, connection: value });
   }
   codexModel(model) {
     this.idle();
     if (typeof model !== "string" || !model.trim() || model.length > 200 || /[\x00-\x1f]/.test(model)) fail("Codex 모델을 선택해 주세요.");
     return this.write({ ...this.data, codexModel: model, connection: "codex" });
+  }
+  googleModel({ accountId, model, maxTokens }) {
+    this.idle();
+    if (!this.googleAccounts?.has(accountId)) fail('Google 계정에 먼저 로그인해 주세요.');
+    if (typeof model !== 'string' || !/^gemini-[A-Za-z0-9._-]{1,180}$/.test(model)) fail('Gemini 모델 ID를 확인해 주세요.');
+    if (!Number.isInteger(maxTokens) || maxTokens < 64 || maxTokens > 16384) fail('출력 토큰 한도는 64~16384여야 합니다.');
+    return this.write({ ...this.data, connection: 'google', googleAccountId: accountId, googleModel: model, googleMaxTokens: maxTokens });
   }
   setMode(mode) {
     this.idle();
@@ -124,20 +135,23 @@ class PersonalService {
   async complete(messages, { probe = false } = {}) {
     this.idle();
     if (this.data.mode !== "personal") fail("개인용 모드에서만 모델을 호출할 수 있습니다.");
-    const config = validateModel(this.data);
+    const google = this.data.connection === 'google';
+    const config = google ? { accountId: this.data.googleAccountId, model: this.data.googleModel, maxTokens: this.data.googleMaxTokens } : validateModel(this.data);
+    if (google && (!this.googleAccounts?.has(config.accountId) || typeof config.model !== 'string' || !/^gemini-[A-Za-z0-9._-]{1,180}$/.test(config.model) || !Number.isInteger(config.maxTokens) || config.maxTokens < 64 || config.maxTokens > 16384)) fail('Google 계정과 Gemini 모델을 설정해 주세요.');
     if (!Array.isArray(messages) || messages.length < 1 || messages.length > 24 || messages.some(row => !row || !["user", "assistant"].includes(row.role) || typeof row.content !== "string" || !row.content.trim()) || JSON.stringify(messages).length > 100000) fail("대화 입력이 제한을 초과했거나 올바르지 않습니다.");
     let key = "";
-    if (this.data.encryptedKey) {
+    if (!google && this.data.encryptedKey) {
       if (!this.encryptionAvailable()) fail("OS 보안 저장소를 사용할 수 없습니다.");
       try { key = this.safeStorage.decryptString(Buffer.from(this.data.encryptedKey, "base64")); }
       catch { fail("저장된 키를 복호화할 수 없습니다. 키를 다시 등록해 주세요."); }
     }
-    if (!key && config.provider !== "local") fail("API 키를 먼저 등록해 주세요.");
+    if (!google && !key && config.provider !== "local") fail("API 키를 먼저 등록해 주세요.");
     const controller = new AbortController();
     this.active = controller;
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, this.timeoutMs);
     try {
+      if (google) return await this.googleAccounts.complete(messages, config, controller.signal, probe);
       const body = { model: config.model, messages: messages.map(({ role, content }) => ({ role, content })), stream: false };
       const preset = providers.find(item => item.id === config.provider);
       body[preset.tokenField] = probe ? Math.min(preset.probeTokens, config.maxTokens) : config.maxTokens;

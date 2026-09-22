@@ -7,6 +7,14 @@ contextBridge.exposeInMainWorld("btk", {
     save: language => ipcRenderer.invoke('btk:preferences:save', { language }),
   },
   personal: {
+    google: {
+      state: agentId => ipcRenderer.invoke('btk:google:state', { agentId }),
+      import: (agentId, name) => ipcRenderer.invoke('btk:google:import', { agentId, name }),
+      login: (agentId, id) => ipcRenderer.invoke('btk:google:login', { agentId, id }),
+      cancelLogin: agentId => ipcRenderer.invoke('btk:google:cancelLogin', { agentId }),
+      remove: (agentId, id) => ipcRenderer.invoke('btk:google:remove', { agentId, id }),
+      model: (agentId, config) => ipcRenderer.invoke('btk:google:model', { ...config, agentId }),
+    },
     knowledge: {
       read: agentId => ipcRenderer.invoke('btk:knowledge:read', { agentId }),
       prompt: (agentId, value) => ipcRenderer.invoke('btk:knowledge:prompt', { agentId, value }),

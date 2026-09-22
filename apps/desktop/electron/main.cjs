@@ -5,6 +5,8 @@ const { PersonalError } = require("./personal.cjs");
 const { AgentProfiles } = require("./agents.cjs");
 const { TeamCoordinator } = require('./team.cjs');
 const { KnowledgeStore, enrich } = require('./knowledge.cjs');
+const { GoogleAccounts } = require('./google-accounts.cjs');
+const fs = require('node:fs');
 const { SlackConnector } = require("./slack.cjs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -29,6 +31,7 @@ let codex;
 let agents;
 let team;
 let knowledge;
+let googleAccounts;
 let personalDialogActive = false;
 let t = text => text;
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -52,7 +55,8 @@ else {
       const directory = path.join(app.getPath("userData"), "agent-ops-personal");
       const relative = path.relative(path.resolve(__dirname, "../../.."), directory);
       if (!relative.startsWith(".." + path.sep) && !path.isAbsolute(relative)) throw new Error();
-      agents = new AgentProfiles({ directory, safeStorage });
+      googleAccounts = new GoogleAccounts({ directory, safeStorage, openExternal: url => shell.openExternal(url) });
+      agents = new AgentProfiles({ directory, safeStorage, googleAccounts });
       knowledge = new KnowledgeStore({ directory, safeStorage });
       personal = agents.service;
       slack = new SlackConnector({ personal });
@@ -68,17 +72,55 @@ else {
     team = new TeamCoordinator({ open: (id, { objective }) => {
       const service = agents.open(id);
       const state = service.state();
-      if (state.mode !== 'personal' || !state.model || (state.connection !== 'codex' && state.provider !== 'local' && !state.keyConfigured)) throw new PersonalError('참여 에이전트의 모델 연결을 설정해 주세요.');
+      if (state.mode !== 'personal' || !state.model || (state.connection !== 'codex' && !state.accountConfigured && state.provider !== 'local' && !state.keyConfigured)) throw new PersonalError('참여 에이전트의 모델 연결을 설정해 주세요.');
       const connection = state.connection === 'codex' ? new CodexConnection({ directory: agents.location(id), openExternal: url => shell.openExternal(url) }) : null;
       const snapshot = knowledge.snapshot(id, true);
       return { model: state.model, complete: messages => { const input = enrich(messages, snapshot, objective); return connection ? connection.complete(input, state.model) : service.complete(input); }, cancel: () => connection ? connection.cancel() : service.cancel(), close: () => connection?.stop() };
     } });
+    const googleState = () => {
+      const state = googleAccounts.state();
+      return { ...state, accounts: state.accounts.map(account => ({ ...account, agents: agents.data.agents.filter(agent => {
+        const data = (agent.id === agents.data.selected ? personal : agents.open(agent.id)).data;
+        return data.connection === 'google' && data.googleAccountId === account.id;
+      }).map(agent => ({ id: agent.id, name: agent.name })) })) };
+    };
+    for (const method of ['state', 'import', 'login', 'cancelLogin', 'remove', 'model']) ipcMain.handle(`btk:google:${method}`, async (event, params) => {
+      if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('Untrusted request');
+      try {
+        if (params?.agentId !== agents.data.selected) throw new PersonalError('대화의 에이전트가 변경되었습니다. 선택 상태를 확인해 주세요.');
+        if (method === 'state') return googleState();
+        personal.idle();
+        if (team.active || personalDialogActive || codex.loginId) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
+        if (method === 'cancelLogin') { googleAccounts.cancelLogin(); return googleState(); }
+        if (googleAccounts.pending) throw new PersonalError('진행 중인 로그인을 완료하거나 취소해 주세요.');
+        if (method === 'login') { await googleAccounts.login(params.id); return googleState(); }
+        if (method === 'model') return agents.state(personal.googleModel(params));
+        personalDialogActive = true;
+        try {
+          if (method === 'import') {
+            const choice = await dialog.showOpenDialog(window, { properties: ['openFile'], filters: [{ name: 'Google OAuth JSON', extensions: ['json'] }] });
+            if (choice.canceled) return googleState();
+            const file = choice.filePaths[0]; const stat = fs.lstatSync(file);
+            if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 32000) throw new PersonalError('Google 데스크톱 OAuth 클라이언트 JSON을 선택해 주세요.');
+            googleAccounts.import(JSON.parse(fs.readFileSync(file, 'utf8')), params.name);
+          } else {
+            const account = googleState().accounts.find(a => a.id === params.id);
+            if (!account) throw new PersonalError('연결 계정을 선택해 주세요.');
+            const answer = await dialog.showMessageBox(window, { type: 'warning', title: t('연결 계정 삭제'), message: t('이 PC에서 공유 계정을 삭제할까요?'),
+              detail: `${account.name}\n${account.agents.map(a => a.name).join(', ')}\n${t('연결된 에이전트는 다시 로그인하기 전까지 실행할 수 없습니다. Google 측 앱 권한은 별도로 철회해야 합니다.')}`,
+              buttons: [t('취소'), t('삭제')], defaultId: 0, cancelId: 0 });
+            if (answer.response === 1) googleAccounts.remove(params.id);
+          }
+          return googleState();
+        } finally { personalDialogActive = false; }
+      } catch (error) { throw new Error(error instanceof PersonalError ? error.message : 'Google 계정 요청을 처리하지 못했습니다.'); }
+    });
     for (const method of ['read', 'prompt', 'save', 'remove']) ipcMain.handle(`btk:knowledge:${method}`, (event, params) => {
       if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('Untrusted request');
       if (params?.agentId !== agents.data.selected) throw new PersonalError('대화의 에이전트가 변경되었습니다. 선택 상태를 확인해 주세요.');
       if (method === 'read') return knowledge.state(agents.data.selected);
       personal.idle();
-      if (team.active || personalDialogActive || codex.loginId) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
+      if (team.active || personalDialogActive || codex.loginId || googleAccounts.pending) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
       if (method === 'prompt') return knowledge.prompt(agents.data.selected, params.value);
       if (method === 'save') return knowledge.upsert(agents.data.selected, params.record);
       return knowledge.remove(agents.data.selected, params.id);
@@ -89,7 +131,7 @@ else {
       if (method === 'configuration') return agents.teamState();
       if (method === 'cancel') return team.cancel();
       personal.idle();
-      if (personalDialogActive || codex.loginId) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
+      if (personalDialogActive || codex.loginId || googleAccounts.pending) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
       if (team.active) throw new PersonalError('팀 작업이 진행 중입니다.');
       if (method === 'clear') return team.clear();
       if (method === 'configure') return agents.configureTeam(params);
@@ -109,6 +151,7 @@ else {
         if (personalFailure) throw new Error("개인용 보안 설정을 읽지 못했습니다. 저장 위치와 기존 설정을 확인해 주세요.");
         try {
           if (method === "state") return agents.state();
+          if (googleAccounts.pending) throw new PersonalError('진행 중인 로그인을 완료하거나 취소해 주세요.');
           if (team.active) throw new PersonalError('팀 작업이 진행 중입니다.');
           if (personalDialogActive) throw new PersonalError("열린 확인 창을 먼저 닫아 주세요.");
           if (method === "mode") {
@@ -266,6 +309,7 @@ else {
     clearInterval(setupMonitor);
     personal?.cancel();
     team?.cancel();
+    googleAccounts?.stop();
     codex?.stop();
     slack?.cancel();
     bridge.stop();

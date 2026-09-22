@@ -61,3 +61,5 @@ jobs:
           node tests/layout-transition-smoke.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/knowledge-ui-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/google-ui-smoke.cjs

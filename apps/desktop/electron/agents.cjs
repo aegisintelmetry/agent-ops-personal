@@ -19,9 +19,9 @@ function teamOf(value, agents) {
 // Metadata lives here; model credentials remain in each PersonalService's OS-encrypted file.
 // The default agent keeps its original paths, including its existing Codex keyring identity.
 class AgentProfiles {
-  constructor({ directory, safeStorage, serviceFactory = options => new PersonalService(options) }) {
+  constructor({ directory, safeStorage, googleAccounts, serviceFactory = options => new PersonalService(options) }) {
     this.directory = directory;
-    this.options = { safeStorage };
+    this.options = { safeStorage, googleAccounts };
     this.factory = serviceFactory;
     this.file = path.join(directory, "agents.json");
     this.data = { schema: 1, selected: "default", agents: [{ id: "default", name: "기본 에이전트" }] };
@@ -52,7 +52,7 @@ class AgentProfiles {
       try {
         const state = (agent.id === this.data.selected ? this.service : this.open(agent.id)).state();
         return { ...agent, model: state.model, connection: state.connection, provider: state.provider,
-          configured: Boolean(state.mode === 'personal' && state.model && (state.connection === 'codex' || state.provider === 'local' || state.keyConfigured)) };
+          configured: Boolean(state.mode === 'personal' && state.model && (state.connection === 'codex' || state.accountConfigured || state.provider === 'local' || state.keyConfigured)) };
       } catch { return { ...agent, model: '', connection: '', provider: '', configured: false }; }
     }) };
   }
