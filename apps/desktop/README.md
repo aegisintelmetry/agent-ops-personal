@@ -1,6 +1,6 @@
 # AEGIS Agent Ops Desktop Preview
 
-Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.3 includes
+Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.4 includes
 the Agent Ops workspace layout, centered composer and independent in-memory chat
 sessions. Sessions and drafts survive navigation, not app restart. The UI does
 not create a persistent session archive; submitted messages and selected history
@@ -80,7 +80,12 @@ Build from `apps/desktop` after `npm ci`:
 powershell -NoProfile -File .\build-windows.ps1
 ```
 
-Output: `release/AEGIS-Agent-Ops-Setup-0.5.3-preview.exe` (Windows x64, NSIS).
+Output: `release/AEGIS-Agent-Ops-Setup-0.5.4-preview.exe` (Windows x64, NSIS).
+
+The product is licensed under Apache-2.0 with copyright held by aegisintelmetry.
+Packages include `resources/LICENSE`, `resources/NOTICE`, and the existing
+`resources/THIRD-PARTY-NOTICES.txt`. Public release remains pending the rights
+and history review described in `docs/public-release.md` at the repository root.
 The build uses an isolated `.build-venv`; it does not modify the operational
 Python environment. `-Unpacked` builds only the unpacked application.
 Use `-OutputDirectory release-preview` while another unpacked preview is running.
