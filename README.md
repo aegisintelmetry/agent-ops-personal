@@ -232,6 +232,8 @@ Older implementation notes in `docs/` describe individual development stages. Th
 
 ## History and Scope
 
+Official publisher: **aegisintelmetry**. See [origin and release verification](docs/provenance.md) for the public baseline, installer checksum, and signing limitations, and [project identity](BRANDING.md) for distinguishing forks from official releases.
+
 This repository preserves **selected product development history**, starting from a licensed 0.5.4 product snapshot. Earlier private operational code and its Git history are deliberately excluded. Later improvements retain their original authorship and change descriptions. See the [history policy](docs/public-history.md).
 
 The source includes `apps/desktop`, the `agent_ops` client/core, and tests. Private Security FDE service implementations, central servers, and operational harnesses are not included. Legacy `BTK_*` identifiers remain for compatibility, not as preconfigured access to internal systems.

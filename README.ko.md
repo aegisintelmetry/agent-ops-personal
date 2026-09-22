@@ -229,6 +229,8 @@ powershell -NoProfile -File apps/desktop/build-windows.ps1
 
 ## 이력과 공개 범위
 
+공식 배포 주체는 **aegisintelmetry**입니다. 공개 시작점·설치 파일 해시·서명 한계는 [출처와 배포 검증](docs/provenance.ko.md), 포크와 공식 배포 구분은 [프로젝트 식별 안내](BRANDING.md)를 참고하세요.
+
 이 저장소는 라이선스를 적용한 0.5.4 제품 스냅샷을 시작점으로 **공개 가능한 제품 개발 이력을 선별**했습니다. 초기 비공개 운영 코드와 그 Git 이력은 포함하지 않습니다. 이후 제품 개선의 원래 작성자와 변경 설명은 유지했습니다. [이력 방침](docs/public-history.md)을 공개합니다.
 
 `apps/desktop`, `agent_ops` 클라이언트·코어, 테스트가 공개 대상입니다. 비공개 Security FDE 서비스 구현, 중앙 서버, 운영 하네스는 공개하지 않습니다. `BTK_*` 식별자는 기존 설정 호환용이며 내부 시스템 접근 권한을 제공하지 않습니다.
