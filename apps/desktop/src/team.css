@@ -14,6 +14,20 @@
 .team-worker { border-top: 1px solid #dce1e6; padding: 16px 0; }
 .team-panel p { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
 .team-panel summary { cursor: pointer; }
+.agent-editor-tabs { display: flex; gap: 8px; border-bottom: 1px solid #dce1e6; padding: 12px 0; }
+.agent-editor-tabs button { padding: 8px 12px; font-size: 13px; border-bottom: 2px solid transparent; }
+.agent-editor-tabs button[aria-selected="true"] { border-color: #25755a; color: #25755a; }
+.knowledge-panel { padding: 16px 0; }
+.knowledge-panel form { margin-top: 18px; }
+.knowledge-panel label { display: grid; gap: 8px; font-size: 13px; }
+.knowledge-panel input:not([type="checkbox"]), .knowledge-panel textarea, .knowledge-panel select { width: 100%; min-width: 0; padding: 9px; font: inherit; border: 1px solid #ccd1d6; border-radius: 6px; }
+.knowledge-panel fieldset { display: grid; gap: 16px; border: 0; padding: 0; min-width: 0; }
+.knowledge-panel textarea { min-height: 140px; resize: vertical; }
+.knowledge-panel .knowledge-enabled { display: flex; align-items: center; }
+.knowledge-list { list-style: none; margin: 16px 0; padding: 0; }
+.knowledge-list li { display: flex; align-items: center; border-bottom: 1px solid #dce1e6; padding: 12px 0; gap: 8px; }
+.knowledge-list li > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.knowledge-list small { display: block; color: #69737b; font-size: 11px; margin-top: 6px; }
 @media (max-width: 600px) { .team-panel { padding: 16px; } }
 .team-builder { display: grid; gap: 28px; margin-bottom: 28px; }
 .team-builder.editing { grid-template-columns: minmax(260px, 1fr) minmax(320px, 1fr); }
@@ -44,3 +58,25 @@
 .team-incomplete span { overflow-wrap: anywhere; }
 @media (max-width: 1250px) { .team-builder.editing { grid-template-columns: minmax(0, 1fr); } .team-editor { border-left: 0; padding-left: 0; border-top: 1px solid #dce1e6; padding-top: 16px; } }
 @media (max-width: 600px) { .team-tree { margin-left: 8px; padding-left: 16px; } .team-tree li::before { left: -16px; width: 16px; } .team-node-select { display: grid; grid-template-columns: 20px minmax(0, 1fr) 16px; } .team-node-state { grid-column: 2; grid-row: 2; font-size: 10px; } .team-node-select > svg:last-child { grid-column: 3; grid-row: 1; } .team-add-actions { padding-left: 24px; } }
+.team-panel.team-chat-panel { padding: 0; display: flex; flex-direction: column; overflow: hidden; }
+.team-chat-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid #dce1e6; flex-shrink: 0; }
+.team-chat-heading h1 { font-size: 18px; margin: 0; }
+.team-chat-heading > div { display: flex; }
+.team-conversation-layout { display: grid; grid-template-columns: minmax(0, 1fr); flex: 1; min-height: 0; position: relative; }
+.team-conversation-layout.show-team { grid-template-columns: minmax(0, 1fr) 380px; }
+.team-chat { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 0 20px 16px; }
+.team-transcript { flex: 1; overflow-y: auto; min-height: 0; padding: 16px 0; }
+.team-composer { flex-shrink: 0; }
+.team-panel .team-composer textarea { border: 0; min-height: 74px; max-height: 150px; resize: vertical; }
+.team-chat > .team-incomplete { padding: 8px 0; }
+.team-sidebar { overflow-y: auto; min-height: 0; border-left: 1px solid #dce1e6; padding: 16px; background: #f3f5f6; }
+.team-sidebar .team-builder, .team-sidebar .team-builder.editing { display: block; margin: 0; }
+.team-sidebar .team-editor { border: 0; padding: 0; }
+.team-sidebar .team-node-select { display: grid; grid-template-columns: 20px minmax(0, 1fr) 16px; }
+.team-sidebar .team-node-state { grid-column: 2; grid-row: 2; font-size: 10px; }
+.team-sidebar .team-node-select > svg:last-child { grid-column: 3; grid-row: 1; }
+.team-sidebar .team-root-heading select { min-width: 0; }
+.team-failures { padding-left: 18px; color: #a34042; overflow-wrap: anywhere; font-size: 13px; }
+.team-sidebar-scrim { display: none; }
+.team-sidebar .team-structure[hidden] { display: none; }
+@media (max-width: 1100px) { .team-conversation-layout.show-team { grid-template-columns: minmax(0, 1fr); } .team-sidebar { position: absolute; inset: 0 0 0 auto; width: min(380px, 92%); z-index: 5; } .team-sidebar-scrim { display: block; position: absolute; inset: 0; z-index: 4; background: #0004; } }

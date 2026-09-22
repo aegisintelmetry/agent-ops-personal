@@ -4,6 +4,7 @@ const { CodexConnection } = require("./codex.cjs");
 const { PersonalError } = require("./personal.cjs");
 const { AgentProfiles } = require("./agents.cjs");
 const { TeamCoordinator } = require('./team.cjs');
+const { KnowledgeStore, enrich } = require('./knowledge.cjs');
 const { SlackConnector } = require("./slack.cjs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -27,6 +28,7 @@ let slack;
 let codex;
 let agents;
 let team;
+let knowledge;
 let personalDialogActive = false;
 let t = text => text;
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -51,24 +53,37 @@ else {
       const relative = path.relative(path.resolve(__dirname, "../../.."), directory);
       if (!relative.startsWith(".." + path.sep) && !path.isAbsolute(relative)) throw new Error();
       agents = new AgentProfiles({ directory, safeStorage });
+      knowledge = new KnowledgeStore({ directory, safeStorage });
       personal = agents.service;
       slack = new SlackConnector({ personal });
       codex = new CodexConnection({ directory: agents.location(agents.data.selected), openExternal: url => shell.openExternal(url) });
     } catch { personalFailure = true; }
     const complete = async (messages, options) => {
+      if (!options?.probe && Array.isArray(messages)) messages = enrich(messages, knowledge.snapshot(agents.data.selected), messages.at(-1)?.content);
       if (personal.data.connection !== "codex") return personal.complete(messages, options);
       personal.idle(); personal.codexActive = true;
       try { return await codex.complete(messages, personal.data.codexModel); }
       finally { personal.codexActive = false; }
     };
-    team = new TeamCoordinator({ open: id => {
+    team = new TeamCoordinator({ open: (id, { objective }) => {
       const service = agents.open(id);
       const state = service.state();
       if (state.mode !== 'personal' || !state.model || (state.connection !== 'codex' && state.provider !== 'local' && !state.keyConfigured)) throw new PersonalError('참여 에이전트의 모델 연결을 설정해 주세요.');
       const connection = state.connection === 'codex' ? new CodexConnection({ directory: agents.location(id), openExternal: url => shell.openExternal(url) }) : null;
-      return { model: state.model, complete: messages => connection ? connection.complete(messages, state.model) : service.complete(messages), cancel: () => connection ? connection.cancel() : service.cancel(), close: () => connection?.stop() };
+      const snapshot = knowledge.snapshot(id, true);
+      return { model: state.model, complete: messages => { const input = enrich(messages, snapshot, objective); return connection ? connection.complete(input, state.model) : service.complete(input); }, cancel: () => connection ? connection.cancel() : service.cancel(), close: () => connection?.stop() };
     } });
-    for (const method of ['state', 'start', 'cancel', 'configuration', 'configure']) ipcMain.handle(`btk:team:${method}`, async (event, params) => {
+    for (const method of ['read', 'prompt', 'save', 'remove']) ipcMain.handle(`btk:knowledge:${method}`, (event, params) => {
+      if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('Untrusted request');
+      if (params?.agentId !== agents.data.selected) throw new PersonalError('대화의 에이전트가 변경되었습니다. 선택 상태를 확인해 주세요.');
+      if (method === 'read') return knowledge.state(agents.data.selected);
+      personal.idle();
+      if (team.active || personalDialogActive || codex.loginId) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
+      if (method === 'prompt') return knowledge.prompt(agents.data.selected, params.value);
+      if (method === 'save') return knowledge.upsert(agents.data.selected, params.record);
+      return knowledge.remove(agents.data.selected, params.id);
+    });
+    for (const method of ['state', 'start', 'cancel', 'clear', 'configuration', 'configure']) ipcMain.handle(`btk:team:${method}`, async (event, params) => {
       if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('Untrusted request');
       if (method === 'state') return team.state();
       if (method === 'configuration') return agents.teamState();
@@ -76,13 +91,14 @@ else {
       personal.idle();
       if (personalDialogActive || codex.loginId) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
       if (team.active) throw new PersonalError('팀 작업이 진행 중입니다.');
+      if (method === 'clear') return team.clear();
       if (method === 'configure') return agents.configureTeam(params);
       const configuration = agents.teamState();
       const participants = [params?.masterId, ...(Array.isArray(params?.workerIds) ? params.workerIds : [])];
       if (participants.some(id => !configuration.agents.some(agent => agent.id === id && agent.configured))) throw new PersonalError('참여 에이전트의 모델 연결을 설정해 주세요.');
       personalDialogActive = true;
       try {
-        const answer = await dialog.showMessageBox(window, { type: 'question', title: t('팀 작업 실행 확인'), buttons: [t('취소'), t('계속')], defaultId: 0, cancelId: 0, message: t('선택한 모델로 팀 작업을 실행할까요?'), detail: t('목표와 작업 결과가 참여 모델 공급자에게 전송됩니다. 최대 6회 호출하며 API 요금 또는 구독 한도가 소비됩니다. 기존 대화와 파일은 전송하지 않습니다. 실행 기록은 앱 종료 시 사라집니다.') });
+        const answer = await dialog.showMessageBox(window, { type: 'question', title: t('팀 작업 실행 확인'), buttons: [t('취소'), t('계속')], defaultId: 0, cancelId: 0, message: t('선택한 모델로 팀 작업을 실행할까요?'), detail: t('팀 대화의 최근 결과와 활성 메모리·역할 프롬프트가 참여 모델에 전달됩니다. 작업 결과는 마스터와 공유됩니다. 최대 6회 호출하며 API 요금 또는 구독 한도가 소비됩니다. 다른 개인 대화와 파일은 전송하지 않습니다.') });
         if (answer.response !== 1) return team.state();
       } finally { personalDialogActive = false; }
       return team.start(params, agents.data.agents);

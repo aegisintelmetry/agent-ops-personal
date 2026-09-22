@@ -58,7 +58,7 @@ const server = http.createServer(async (req, res) => {
   assert.equal((await page.evaluate(() => window.btk.personal.team.state())).status, 'completed');
   await page.getByRole('button', { name: '하위 에이전트 추가', exact: true }).click();
   await page.getByRole('region', { name: '에이전트 설정', exact: true }).waitFor();
-  await page.getByRole('button', { name: '작업 에이전트 1 설정', exact: true }).waitFor();
+  await page.getByRole('heading', { name: '작업 에이전트 1', exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: '팀 작업 실행', exact: true }).isDisabled(), true);
   assert.equal(await page.evaluate(async () => { const c = await window.btk.personal.team.configuration(); try { await window.btk.personal.team.start({ masterId: c.masterId, workerIds: c.workerIds, objective: 'invalid setup' }); return false; } catch { return true; } }), true);
   assert.equal(requests.length, 4);
@@ -69,7 +69,7 @@ const server = http.createServer(async (req, res) => {
   await editor.getByLabel('모델 ID', { exact: true }).fill('inline-worker-model');
   await editor.getByRole('button', { name: '저장', exact: true }).click();
   await page.waitForFunction(async () => (await window.btk.personal.team.configuration()).agents.some(a => a.model === 'inline-worker-model' && a.configured));
-  await page.getByRole('button', { name: '작업 에이전트 1 설정', exact: true }).getByText('inline-worker-model', { exact: true }).waitFor();
+  await page.getByText('설정 저장됨 · 연결 미검증', { exact: true }).waitFor();
   const persisted = await page.evaluate(() => window.btk.personal.team.configuration());
   assert.equal(persisted.workerIds.length, 3);
   await page.getByRole('button', { name: '설정 닫기', exact: true }).click();

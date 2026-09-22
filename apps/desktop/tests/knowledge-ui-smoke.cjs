@@ -1,0 +1,95 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const http = require('node:http');
+const { _electron } = require('playwright');
+const root = path.resolve(__dirname, '..');
+const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-memory-ui-'));
+let app, workerId;
+let failWorker = true;
+const requests = [];
+const errors = [];
+const server = http.createServer(async (req, res) => {
+  let raw = ''; for await (const chunk of req) raw += chunk;
+  const body = JSON.parse(raw); requests.push(body);
+  const prompt = body.messages[0].content;
+  if (body.model === 'worker-model' && failWorker) { failWorker = false; res.writeHead(429); res.end('{}'); return; }
+  const content = prompt.startsWith('Plan') ? JSON.stringify({ tasks: [{ agentId: workerId, task: 'Review Mercury budget' }] }) : prompt.startsWith('Synthesize') ? 'Mercury synthesis' : 'Mercury worker evidence';
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ choices: [{ message: { content }, finish_reason: 'stop' }] }));
+});
+async function launch() {
+  const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
+  const packaged = process.env.BTK_DESKTOP_TEST_EXE;
+  if (packaged) env.PATH = `${process.env.SystemRoot}\\System32;${process.env.SystemRoot}`;
+  app = await _electron.launch({ executablePath: packaged || path.join(root, 'node_modules/electron/dist/electron.exe'), args: [...(packaged ? [] : [root]), `--user-data-dir=${directory}`], env });
+  const page = await app.firstWindow(); page.setDefaultTimeout(15000); page.on('pageerror', e => errors.push(e.message)); return page;
+}
+(async () => {
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  let page = await launch();
+  await page.getByRole('button', { name: '개인용 Personal' }).click();
+  workerId = await page.evaluate(async endpoint => {
+    const p = window.btk.personal;
+    await p.save({ provider: 'local', endpoint, model: 'master-model', maxTokens: 1024, apiKey: '' });
+    const worker = await p.agents.create('MemoryWorker');
+    await p.save({ provider: 'local', endpoint, model: 'worker-model', maxTokens: 1024, apiKey: '' });
+    await p.knowledge.prompt(worker.agentId, 'WorkerStyle');
+    await p.agents.select('default');
+    await p.team.configure({ masterId: 'default', workerIds: [worker.agentId] });
+    return worker.agentId;
+  }, `http://127.0.0.1:${server.address().port}/v1`);
+  await page.reload();
+  await page.getByRole('button', { name: '팀 작업', exact: true }).click();
+  await page.getByRole('button', { name: '기본 에이전트 설정', exact: true }).click();
+  await page.getByRole('tab', { name: '프롬프트', exact: true }).click();
+  await page.getByLabel('역할 프롬프트', { exact: true }).fill('MasterStyle');
+  await page.getByRole('button', { name: '프롬프트 저장', exact: true }).click();
+  await page.getByText('저장됨', { exact: true }).waitFor();
+  await page.getByRole('tab', { name: '메모리', exact: true }).click();
+  await page.getByLabel('메모리 제목', { exact: true }).fill('Mercury shared');
+  await page.getByLabel('메모리 내용', { exact: true }).fill('Mercury budget is 42 units.');
+  await page.getByLabel('공유 범위', { exact: true }).selectOption('global');
+  await page.getByLabel('실행에 사용 · 모델 공급자에 전달', { exact: true }).check();
+  await page.getByRole('button', { name: '메모리 저장', exact: true }).click();
+  await page.getByText('Mercury shared', { exact: true }).waitFor();
+  await page.evaluate(async () => { await window.btk.personal.knowledge.save('default', { title: 'Mercury private', content: 'OnlyMaster reference', scope: 'agent', enabled: true, source: 'fixture' }); });
+  assert.equal(await page.evaluate(async id => { try { await window.btk.personal.knowledge.read(id); return false; } catch { return true; } }, workerId), true);
+  await page.getByRole('button', { name: '설정 닫기', exact: true }).click();
+  await app.evaluate(({ dialog }) => { dialog.showMessageBox = async () => ({ response: 1 }); });
+  await page.getByLabel('작업 목표', { exact: true }).fill('Mercury budget');
+  await page.getByRole('button', { name: '팀 작업 실행', exact: true }).click();
+  await page.getByText('요청 한도 또는 잔액을 확인해 주세요.', { exact: false }).waitFor();
+  await page.getByRole('button', { name: '미완료 작업 재시도', exact: true }).click();
+  await page.getByText('Mercury synthesis', { exact: true }).waitFor();
+  assert.ok(requests[0].messages[0].content.includes('MasterStyle'));
+  assert.ok(requests[0].messages[0].content.includes('OnlyMaster'));
+  const workerPrompt = requests.find(r => r.model === 'worker-model').messages[0].content;
+  assert.ok(workerPrompt.includes('WorkerStyle')); assert.ok(workerPrompt.includes('42 units'));
+  assert.ok(!workerPrompt.includes('OnlyMaster')); assert.ok(!workerPrompt.includes('MasterStyle'));
+  await page.getByLabel('작업 목표', { exact: true }).fill('Mercury follow-up');
+  await page.getByRole('button', { name: '팀 작업 실행', exact: true }).click();
+  await page.waitForFunction(async () => (await window.btk.personal.team.state())?.turns.length === 3 && (await window.btk.personal.team.state()).status === 'completed');
+  await page.getByText('Mercury synthesis', { exact: true }).nth(1).waitFor();
+  const plans = requests.filter(r => r.messages[0].content.startsWith('Plan'));
+  assert.ok(plans.at(-1).messages[0].content.includes('Mercury synthesis'));
+  fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
+  for (const width of [1440, 390]) {
+    await app.evaluate(({ BrowserWindow }, width) => { const w = BrowserWindow.getAllWindows()[0]; w.setMinimumSize(0, 0); w.setSize(width, 900); }, width);
+    await page.waitForTimeout(150);
+    if (width === 390) await page.getByRole('button', { name: '팀 구성 표시', exact: true }).click();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    const bounds = await page.locator('.team-composer').boundingBox();
+    assert.ok(bounds.y + bounds.height <= await page.evaluate(() => innerHeight) + 1);
+    await page.screenshot({ path: path.join(root, `artifacts/team-chat-memory-${width}.png`) });
+  }
+  const count = requests.length;
+  await app.close(); app = null; page = await launch();
+  await page.getByRole('button', { name: '팀 작업', exact: true }).waitFor();
+  const restored = await page.evaluate(() => window.btk.personal.knowledge.read('default'));
+  assert.equal(restored.prompt, 'MasterStyle'); assert.equal(restored.records.length, 2);
+  assert.equal(await page.evaluate(() => window.btk.personal.team.state()), null);
+  assert.equal(requests.length, count); assert.deepEqual(errors, []);
+  console.log(JSON.stringify({ status: 'passed', checks: ['memory-tabs', 'native-encrypted-persistence', 'private-scope-isolation', 'role-prompts', 'quota-error-and-retry', 'followup-conversation', 'composer-viewport', 'no-auto-network-on-restart'], actualProviderRequests: false }));
+})().catch(e => { console.error(e); process.exitCode = 1; }).finally(async () => { await app?.close(); server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });

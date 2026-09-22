@@ -1,6 +1,6 @@
 # AEGIS Agent Ops Desktop Preview
 
-Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.8 includes
+Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.9 includes
 the Agent Ops workspace layout, centered composer and independent in-memory chat
 sessions. Sessions and drafts survive navigation, not app restart. The UI does
 not create a persistent session archive; submitted messages and selected history
@@ -37,7 +37,7 @@ Configure each agent's model connection, then select a master and 1-4 distinct
 workers in Team tasks. One in-app coordinator requests a strict JSON plan from
 the master, runs at most two workers concurrently, and returns completed worker
 results to the master for synthesis. Each worker has an independent session;
-existing conversations, files and credentials are not included in shared inputs.
+existing personal conversations, files and credentials are not included in shared inputs.
 The native confirmation covers sharing objectives/results with the configured
 providers and consuming API credit or subscription quota. There are at most six
 calls per run and no automatic retries. Worker failures or truncated responses
@@ -45,8 +45,10 @@ cannot become a completed team result. Completed means the text workflow finishe
 not that claims in generated text have been independently verified.
 
 The coordinator in the Electron main process is the only run-state authority;
-the UI reads snapshots while running. Only the latest run is retained in memory,
-surviving navigation/reload but not app exit. Closing the app cancels active work.
+the UI reads snapshots while running. Up to 20 team turns are retained in memory,
+surviving navigation/reload but not app exit. A follow-up includes a bounded excerpt
+of up to three completed turns only when the master and participant IDs match.
+New team chat clears that history. Closing the app cancels active work.
 Model/profile changes and ordinary chat are locked during a team run. There are
 no extra PC runners, central fleet dispatch, file tools or external write tools.
 
@@ -60,6 +62,35 @@ Model badges are derived from each agent's own settings on read; no secrets or
 endpoints are copied into team metadata. Removing a worker from the team does
 not delete that agent's configuration or login. Legacy profiles default to the
 default agent as master and no workers, without rewriting their settings on read.
+
+### Prompts And Local Memory
+
+Each agent has Model / Prompt / Memory settings. Role prompts are limited to
+4000 characters. Manual memory records include title, content (2000 characters),
+source, update time, scope and an explicit use-in-requests toggle, off by default.
+The app supports shared, current-team and agent-only scopes, not multiple project
+workspaces yet. Other agents' private records are excluded from retrieval. Team
+memory is excluded from ordinary personal chat. Generated worker results still
+go to the master and may reflect the worker's references; private storage scope
+does not promise that generated answers cannot reveal their reference material.
+
+`agent-ops-personal/knowledge.enc` is the sole durable authority for prompts and
+memory, encrypted with Electron OS safeStorage. No plaintext fallback is allowed.
+Known API-key/token/private-key patterns are rejected, but pattern checks cannot
+detect every possible secret. The app does not automatically collect conversations,
+files or model outputs. A corrupt file fails closed without overwriting it.
+There are at most 200 records and a 1.5 MB encrypted-file limit. Search is local
+substring search; request retrieval ranks enabled keyword matches and sends at
+most three records. No embeddings, summarizer service or automatic paid calls
+are used. Snapshots are fixed at team-run start. Memory is untrusted reference
+data, not executable instructions or authority to enable tools.
+
+The native team confirmation covers enabled context, recent team conversation,
+result sharing and provider usage. Retries require another confirmation and may
+consume quota. They reuse completed workers with unchanged model IDs and retry
+unfinished work; malformed plans require replanning. Model failures are displayed
+through fixed safe messages, never raw upstream error bodies. API quota, account
+authentication and model availability are not inferred from saved settings.
 
 The authority for personal preferences and the encrypted key is
 `<Electron userData>/agent-ops-personal/personal.json`, outside the repository.
@@ -110,7 +141,7 @@ Build from `apps/desktop` after `npm ci`:
 powershell -NoProfile -File .\build-windows.ps1
 ```
 
-Output: `release/AEGIS-Agent-Ops-Setup-0.5.8-preview.exe` (Windows x64, NSIS).
+Output: `release/AEGIS-Agent-Ops-Setup-0.5.9-preview.exe` (Windows x64, NSIS).
 
 The language selector on the edition screen and app toolbar supports Korean and
 English. The desktop main process owns `userData/ui-preferences.json`; renderer

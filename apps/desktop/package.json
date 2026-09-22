@@ -1,6 +1,6 @@
 {
   "name": "btk-agent-desktop",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "description": "AEGIS Agent Ops desktop and isolated local core",
   "license": "Apache-2.0",
   "author": {
@@ -14,7 +14,7 @@
     "build": "vite build",
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "test:desktop": "node tests/edition-boundary-smoke.cjs && node tests/personal-window-smoke.cjs && node tests/agents-ui-smoke.cjs && node tests/language-ui-smoke.cjs && node tests/team-ui-smoke.cjs && node tests/layout-transition-smoke.cjs",
+    "test:desktop": "node tests/edition-boundary-smoke.cjs && node tests/personal-window-smoke.cjs && node tests/agents-ui-smoke.cjs && node tests/language-ui-smoke.cjs && node tests/team-ui-smoke.cjs && node tests/layout-transition-smoke.cjs && node tests/knowledge-ui-smoke.cjs",
     "dist:win": "powershell -NoProfile -File build-windows.ps1"
   },
   "dependencies": {

@@ -56,3 +56,35 @@ test('cancel aborts active workers and never starts queued workers or synthesis'
   assert.equal(f.team.state().status, 'cancelled'); assert.equal(f.calls.length, 3);
   assert.ok(f.team.state().workers.every(w => w.status === 'cancelled')); assert.equal(f.team.active, false);
 });
+test('follow-up context is limited to the same team and clear removes it', async () => {
+  const f = fixture(); f.team.start(input, roster); await f.team.done;
+  f.team.start({ ...input, objective: 'Follow up' }, roster); await f.team.done;
+  assert.ok(f.calls[6].messages[0].content.includes('Final synthesis'));
+  assert.equal(f.team.state().turns.length, 2);
+  f.team.clear(); assert.equal(f.team.state(), null);
+});
+test('changing team membership excludes previous conversation and history is bounded', async () => {
+  const f = fixture(); f.team.start(input, roster); await f.team.done;
+  f.team.start({ ...input, workerIds: ['a'] }, roster); await f.team.done;
+  assert.ok(f.calls[6].messages[0].content.includes('"priorTeamConversation":[]'));
+  for (let i = 2; i < 20; i++) { f.team.start(input, roster); await f.team.done; }
+  assert.throws(() => f.team.start(input, roster), /새 팀 대화/);
+  f.team.clear(); assert.equal(f.team.state(), null);
+});
+test('retry reuses completed workers and exposes only sanitized failure reason', async () => {
+  let attempts = 0; const calls = [];
+  const team = new TeamCoordinator({ open: id => ({ model: id, cancel() {}, close() {}, async complete(messages) {
+    calls.push(id);
+    if (messages[0].content.startsWith('Plan')) return { status: 'completed', text: JSON.stringify({ tasks: ['a', 'b'].map(agentId => ({ agentId, task: 'review' })) }) };
+    if (id === 'a' && attempts++ === 0) throw new Error('HTTP 429 secret fixture must not appear');
+    return { status: 'completed', text: 'Result' };
+  } }) });
+  const params = { masterId: 'm', workerIds: ['a', 'b'], objective: 'Review' };
+  team.start(params, roster); await team.done;
+  const first = team.state(); assert.equal(first.status, 'partial');
+  assert.ok(first.workers[0].error.includes('한도')); assert.ok(!JSON.stringify(first).includes('secret fixture'));
+  team.start({ ...params, retryOf: first.id }, roster); await team.done;
+  assert.equal(team.state().status, 'completed'); assert.equal(calls.filter(id => id === 'b').length, 1);
+  assert.equal(team.state().calls, 2);
+  assert.throws(() => team.start({ ...params, retryOf: first.id }, roster));
+});
