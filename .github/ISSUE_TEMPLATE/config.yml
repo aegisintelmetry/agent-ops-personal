@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and design / 질문과 설계
+    url: https://github.com/aegisintelmetry/agent-ops-public-preview/discussions
+    about: Ask questions and discuss security/control design before implementation.
+  - name: Private security report / 비공개 보안 신고
+    url: https://github.com/aegisintelmetry/agent-ops-public-preview/security/policy
+    about: Never disclose vulnerabilities, credentials, or private data in public issues.

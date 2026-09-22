@@ -240,6 +240,8 @@ The source includes `apps/desktop`, the `agent_ops` client/core, and tests. Priv
 
 ## Feedback and Security
 
+**Early testers and contributors welcome:** read our [community invitation](docs/community-invitation.md) and join [Discussions](https://github.com/aegisintelmetry/agent-ops-public-preview/discussions). We are exploring security and control features openly; planned permissions and audit capabilities are not shipped guarantees. Please follow the [code of conduct](CODE_OF_CONDUCT.md).
+
 Bug reports, focused pull requests, and useful real-world workflows are welcome. Include the app version, Windows version, and reproduction steps without credentials or private conversations.
 
 Report vulnerabilities privately to **contact@aegistelemetry.com**, not in public issues. See [SECURITY.md](SECURITY.md).

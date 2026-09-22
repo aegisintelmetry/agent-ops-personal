@@ -237,6 +237,8 @@ powershell -NoProfile -File apps/desktop/build-windows.ps1
 
 ## 보안과 라이선스
 
+**초기 테스트·개발 참여자를 모집합니다.** [참여 안내](docs/community-invitation.md)를 읽고 [Discussions](https://github.com/aegisintelmetry/agent-ops-public-preview/discussions)에서 질문과 보안·통제 설계 의견을 나눠 주세요. 계획 중인 권한·감사 기능은 현재 제공 보장이 아닙니다. [행동강령](CODE_OF_CONDUCT.md)을 지켜 주세요.
+
 취약점은 공개 이슈 대신 **contact@aegistelemetry.com**으로 비공개 신고해 주세요. 키·토큰·개인 대화를 첨부하지 마세요. [보안 정책](SECURITY.md)을 확인하세요.
 
 [Apache-2.0](LICENSE), Copyright (c) 2026 aegisintelmetry. 제3자 구성요소는 각자의 라이선스를 따르며 [NOTICE](NOTICE)와 설치본 고지에 포함합니다. 이 저장소 밖 비공개 서비스에는 이 라이선스가 적용되지 않습니다.
