@@ -12,6 +12,7 @@ let app;
   app = await _electron.launch({ executablePath: path.join(root, "node_modules/electron/dist/electron.exe"), args: [root, `--user-data-dir=${profile}`], env });
   const page = await app.firstWindow();
   const errors = []; page.on("pageerror", error => errors.push(error.message));
+  await page.getByRole('button', { name: '개인용 Personal' }).waitFor();
   await page.evaluate(async () => {
     await window.btk.personal.mode("personal");
     await window.btk.personal.save({ provider: "local", endpoint: "http://127.0.0.1:11434/v1", model: "layout-fixture", maxTokens: 512 });
