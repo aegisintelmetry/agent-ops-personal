@@ -1,6 +1,6 @@
 # AEGIS Agent Ops Desktop Preview
 
-Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.5 includes
+Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.6 includes
 the Agent Ops workspace layout, centered composer and independent in-memory chat
 sessions. Sessions and drafts survive navigation, not app restart. The UI does
 not create a persistent session archive; submitted messages and selected history
@@ -28,8 +28,27 @@ local UI preference, not enterprise authentication or a permission grant.
 Personal supports text chat through OpenAI Chat Completions, custom compatible
 HTTPS endpoints, or loopback-compatible local models. Model IDs are user supplied.
 Native Anthropic/Gemini protocols, tool execution, streaming, durable conversation
-history, automation and multi-agent dispatch are not implemented in this phase.
+history and automation are not implemented in this phase.
 Selecting a working folder only records its path; no files are read or uploaded.
+
+### Personal Team Tasks
+
+Configure each agent's model connection, then select a master and 1-4 distinct
+workers in Team tasks. One in-app coordinator requests a strict JSON plan from
+the master, runs at most two workers concurrently, and returns completed worker
+results to the master for synthesis. Each worker has an independent session;
+existing conversations, files and credentials are not included in shared inputs.
+The native confirmation covers sharing objectives/results with the configured
+providers and consuming API credit or subscription quota. There are at most six
+calls per run and no automatic retries. Worker failures or truncated responses
+cannot become a completed team result. Completed means the text workflow finished,
+not that claims in generated text have been independently verified.
+
+The coordinator in the Electron main process is the only run-state authority;
+the UI reads snapshots while running. Only the latest run is retained in memory,
+surviving navigation/reload but not app exit. Closing the app cancels active work.
+Model/profile changes and ordinary chat are locked during a team run. There are
+no extra PC runners, central fleet dispatch, file tools or external write tools.
 
 The authority for personal preferences and the encrypted key is
 `<Electron userData>/agent-ops-personal/personal.json`, outside the repository.
@@ -80,7 +99,7 @@ Build from `apps/desktop` after `npm ci`:
 powershell -NoProfile -File .\build-windows.ps1
 ```
 
-Output: `release/AEGIS-Agent-Ops-Setup-0.5.5-preview.exe` (Windows x64, NSIS).
+Output: `release/AEGIS-Agent-Ops-Setup-0.5.6-preview.exe` (Windows x64, NSIS).
 
 The language selector on the edition screen and app toolbar supports Korean and
 English. The desktop main process owns `userData/ui-preferences.json`; renderer

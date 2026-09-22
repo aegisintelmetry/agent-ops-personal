@@ -4,6 +4,7 @@ import { ArrowUp, Check, CircleAlert, Cpu, FolderOpen, KeyRound, LoaderCircle, M
 import RunSummary from "./RunSummary";
 import SlackPanel from "./SlackPanel";
 import CodexSettings from "./CodexSettings";
+import TeamPanel from './TeamPanel';
 import providers from "../electron/providers.json";
 import { initialSessions, agentSessionsReducer, MAX_SESSIONS } from "./sessions.mjs";
 import "./personal.css";
@@ -112,6 +113,17 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
   const [view, setView] = useState(initial.model ? "chat" : "settings");
   const [busy, setBusy] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
+  const [teamRun, setTeamRun] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    let timer;
+    const poll = async () => {
+      try { const value = await native().team.state(); if (alive) { setTeamRun(value); if (value?.status === 'running') timer = setTimeout(poll, 1000); } }
+      catch (e) { if (alive) setError(e.message); }
+    };
+    poll();
+    return () => { alive = false; clearTimeout(timer); };
+  }, [teamRun?.status]);
   const [error, setError] = useState("");
   const [sessionGroups, dispatchGroup] = useReducer(agentSessionsReducer, null, () => ({ [initial.agentId || "default"]: initialSessions(crypto.randomUUID()) }));
   const agentId = state.agentId || "default";
@@ -136,7 +148,7 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
     return () => { current = false; };
   }, [agentId]);
   const selected = sessions.items.find(item => item.id === sessions.selected);
-  const locked = busy || chatBusy || modeBusy;
+  const locked = busy || chatBusy || modeBusy || teamRun?.status === 'running';
   function navigate(next) { setError(""); setView(next); if (window.innerWidth <= 900) setNavOpen(false); }
   async function run(action) {
     setBusy(true); setError("");
@@ -180,6 +192,7 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
       <div className="brand"><span className="brand-symbol"><Workflow size={21} /></span><div>AEGIS<small>Agent Ops Personal</small></div></div>
       <button className="new-chat" disabled={locked || sessions.items.length >= MAX_SESSIONS} onClick={() => { dispatch({ type: "create", id: crypto.randomUUID() }); navigate("chat"); }}><Plus size={17} />{t("새 대화")}</button>
       <nav aria-label={t("개인용 탐색")}>
+        <button className={view === 'team' ? 'active' : ''} disabled={busy || chatBusy} onClick={() => navigate('team')}><Workflow size={18} />{t('팀 작업')}</button>
         <button className={view === "chat" ? "active" : ""} disabled={busy} onClick={() => navigate("chat")}><MessageSquare size={18} />{t("작업 공간")}</button>
         <button className={view === "settings" ? "active" : ""} disabled={locked} onClick={() => navigate("settings")}><Settings2 size={18} />{t("모델 연결")}</button>
         <button className={view === "connectors" ? "active" : ""} disabled={locked} onClick={() => navigate("connectors")}><Plug size={18} />{t("커넥터")}</button>
@@ -197,7 +210,8 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
       <header className="topbar"><div className="breadcrumb"><ButtonIcon label={t("탐색 표시")} aria-expanded={navOpen} onClick={() => setNavOpen(value => !value)}><PanelLeft size={17} /></ButtonIcon><span>Personal</span><strong>{view === "settings" ? t("모델 연결") : view === "connectors" ? t("커넥터") : t("작업 공간")}</strong></div><div className="topbar-actions"><LanguageSelect /><span className="personal-local">{t("중앙 연결 없음")}</span>{view === "chat" && <ButtonIcon label={t("실행 요약 표시")} aria-pressed={showSummary} onClick={() => setShowSummary(value => !value)}><PanelRight size={17} /></ButtonIcon>}</div></header>
       {(error || modeError) && <div className="personal-error" role="alert"><CircleAlert size={17} /><span>{errorText(error || modeError)}</span></div>}
       <div className="personal-agent-bar"><label>{t("에이전트")}<select aria-label={t("에이전트")} disabled={locked} value={agentId} onChange={event => { const id = event.target.value; run(async () => agentChanged(await native().agents.select(id))); }}>{(state.agents || [{ id: "default", name: t("기본 에이전트") }]).map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}</select></label><ButtonIcon label={t("에이전트 추가")} disabled={locked || (state.agents?.length || 1) >= 20} onClick={() => run(async () => agentChanged(await native().agents.create(t("새 에이전트"))))}><Plus size={18} /></ButtonIcon><span>{state.model || t("모델 미설정")}</span></div>
-      {view === "settings" ? <div className="personal-settings-scroll"><AgentName key={agentId} state={state} busy={locked} run={run} onSaved={setState} /><div className="personal-connection"><label>{t("연결 방식")}<select aria-label={t("연결 방식")} value={state.connection || "api"} disabled={locked} onChange={event => { const value = event.target.value; run(async () => saved(await native().connection(value))); }}><option value="api">{t("API 키 / 로컬 모델")}</option><option value="codex">{t("ChatGPT 로그인")}</option></select></label></div>{state.connection === "codex" ? <CodexSettings key={agentId} state={state} busy={locked} run={run} onSaved={saved} /> : <ModelSettings key={`${agentId}:${state.connection || "api"}`} state={state} busy={locked} run={run} onSaved={saved} />}</div> : view === "connectors" ? <div className="personal-settings-scroll"><SlackPanel key={agentId} state={slack} onState={setSlack} busy={locked} run={run} /></div> :
+      {view === 'team' ? <TeamPanel agents={state.agents} selectedId={agentId} run={teamRun} busy={locked} onStart={params => run(async () => setTeamRun(await native().team.start(params)))} onCancel={() => run(async () => setTeamRun(await native().team.cancel()))} /> :
+      view === "settings" ? <div className="personal-settings-scroll"><AgentName key={agentId} state={state} busy={locked} run={run} onSaved={setState} /><div className="personal-connection"><label>{t("연결 방식")}<select aria-label={t("연결 방식")} value={state.connection || "api"} disabled={locked} onChange={event => { const value = event.target.value; run(async () => saved(await native().connection(value))); }}><option value="api">{t("API 키 / 로컬 모델")}</option><option value="codex">{t("ChatGPT 로그인")}</option></select></label></div>{state.connection === "codex" ? <CodexSettings key={agentId} state={state} busy={locked} run={run} onSaved={saved} /> : <ModelSettings key={`${agentId}:${state.connection || "api"}`} state={state} busy={locked} run={run} onSaved={saved} />}</div> : view === "connectors" ? <div className="personal-settings-scroll"><SlackPanel key={agentId} state={slack} onState={setSlack} busy={locked} run={run} /></div> :
         <div className={`personal-workspace ${showSummary ? "with-summary" : ""}`}>
         <section className="personal-chat">
           <div className="personal-context"><FolderOpen size={15} /><span title={state.workspace}>{state.workspace || t("작업 폴더 미선택")}</span><small>{t("파일 접근 비활성")}</small></div>

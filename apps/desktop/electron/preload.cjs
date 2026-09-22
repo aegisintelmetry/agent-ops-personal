@@ -7,6 +7,11 @@ contextBridge.exposeInMainWorld("btk", {
     save: language => ipcRenderer.invoke('btk:preferences:save', { language }),
   },
   personal: {
+    team: {
+      state: () => ipcRenderer.invoke('btk:team:state'),
+      start: params => ipcRenderer.invoke('btk:team:start', params),
+      cancel: () => ipcRenderer.invoke('btk:team:cancel'),
+    },
     agents: {
       create: (name) => ipcRenderer.invoke("btk:personal:agent_create", { name }),
       select: (id) => ipcRenderer.invoke("btk:personal:agent_select", { id }),

@@ -1,7 +1,7 @@
 # AEGIS Agent Ops
 
 AEGIS Agent Ops Personal / Enterprise 제품 소스 저장소입니다. 공개 준비 중이며 아직 비공개입니다.
-현재 범위는 **Personal 데스크톱 0.5.5 프리뷰와 독립 제품 코어**입니다.
+현재 범위는 **Personal 데스크톱 0.5.6 프리뷰와 독립 제품 코어**입니다.
 Enterprise 웹/제어 모듈과 운영 러너 전체의 이전이 완료된 것은 아닙니다.
 AEGIS 보안 제품은 Enterprise 전용 별도 모듈이며 이 저장소에 포함하지 않습니다.
 
@@ -40,6 +40,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File apps/desktop/build-windows.p
 0.5.3은 운영 하네스 소스를 제거하고 `agent_ops` 제품 코어와 읽기 전용 서비스 어댑터로 분리했습니다.
 0.5.4에는 Apache-2.0 라이선스와 저작권자 고지를 소스 및 Windows 패키지에 추가했습니다.
 0.5.5에는 한국어·영어 화면 선택, 저장된 언어 복원과 확인창 번역을 추가했습니다.
+0.5.6에는 펄스널 팀 작업을 추가했습니다. 마스터와 작업 에이전트 1~4명을 선택하며,
+최대 2개 병렬 실행과 결과 취합을 지원합니다. 호출은 최대 6회이고 자동 재시도는 없습니다.
+에이전트별 기존 대화·키는 공유하지 않으며, 목표와 작업 결과 공유는 실행 전 확인합니다.
+실행 결과는 메모리에만 유지됩니다. 작업자 실패·부분 응답은 전체 완료로 표시하지 않습니다.
 설치본의 `resources/THIRD-PARTY-NOTICES.txt`에 UI·Electron·Python·PyYAML·PyInstaller 고지를 포함합니다.
 
 ## 소스 경계

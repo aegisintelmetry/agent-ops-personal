@@ -3,6 +3,7 @@ const { app, BrowserWindow, ipcMain, session, dialog, safeStorage, shell } = req
 const { CodexConnection } = require("./codex.cjs");
 const { PersonalError } = require("./personal.cjs");
 const { AgentProfiles } = require("./agents.cjs");
+const { TeamCoordinator } = require('./team.cjs');
 const { SlackConnector } = require("./slack.cjs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
@@ -25,6 +26,7 @@ let personal;
 let slack;
 let codex;
 let agents;
+let team;
 let personalDialogActive = false;
 let t = text => text;
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -59,12 +61,34 @@ else {
       try { return await codex.complete(messages, personal.data.codexModel); }
       finally { personal.codexActive = false; }
     };
+    team = new TeamCoordinator({ open: id => {
+      const service = agents.open(id);
+      const state = service.state();
+      if (state.mode !== 'personal' || !state.model || (state.connection !== 'codex' && state.provider !== 'local' && !state.keyConfigured)) throw new PersonalError('참여 에이전트의 모델 연결을 설정해 주세요.');
+      const connection = state.connection === 'codex' ? new CodexConnection({ directory: agents.location(id), openExternal: url => shell.openExternal(url) }) : null;
+      return { model: state.model, complete: messages => connection ? connection.complete(messages, state.model) : service.complete(messages), cancel: () => connection ? connection.cancel() : service.cancel(), close: () => connection?.stop() };
+    } });
+    for (const method of ['state', 'start', 'cancel']) ipcMain.handle(`btk:team:${method}`, async (event, params) => {
+      if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('Untrusted request');
+      if (method === 'state') return team.state();
+      if (method === 'cancel') return team.cancel();
+      personal.idle();
+      if (personalDialogActive || codex.loginId) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
+      if (team.active) throw new PersonalError('팀 작업이 진행 중입니다.');
+      personalDialogActive = true;
+      try {
+        const answer = await dialog.showMessageBox(window, { type: 'question', title: t('팀 작업 실행 확인'), buttons: [t('취소'), t('계속')], defaultId: 0, cancelId: 0, message: t('선택한 모델로 팀 작업을 실행할까요?'), detail: t('목표와 작업 결과가 참여 모델 공급자에게 전송됩니다. 최대 6회 호출하며 API 요금 또는 구독 한도가 소비됩니다. 기존 대화와 파일은 전송하지 않습니다. 실행 기록은 앱 종료 시 사라집니다.') });
+        if (answer.response !== 1) return team.state();
+      } finally { personalDialogActive = false; }
+      return team.start(params, agents.data.agents);
+    });
     for (const method of ["state", "agent_create", "agent_select", "agent_rename", "mode", "connection", "codex_state", "codex_login", "codex_cancelLogin", "codex_logout", "codex_models", "codex_limits", "codex_model", "save", "removeKey", "folder", "test", "chat", "cancel", "slack_state", "slack_save", "slack_enable", "slack_remove", "slack_test", "slack_channels", "slack_cancel"]) {
       ipcMain.handle(`btk:personal:${method}`, async (event, params) => {
         if (!trustedFrame(event, window, entry)) throw new Error("신뢰할 수 없는 요청입니다.");
         if (personalFailure) throw new Error("개인용 보안 설정을 읽지 못했습니다. 저장 위치와 기존 설정을 확인해 주세요.");
         try {
           if (method === "state") return agents.state();
+          if (team.active) throw new PersonalError('팀 작업이 진행 중입니다.');
           if (personalDialogActive) throw new PersonalError("열린 확인 창을 먼저 닫아 주세요.");
           if (method === "mode") {
             if (setupActive || bridge.pending.size) throw new PersonalError("진행 중인 작업을 먼저 완료해 주세요.");
@@ -220,6 +244,7 @@ else {
     if (setupActive) { event.preventDefault(); return; }
     clearInterval(setupMonitor);
     personal?.cancel();
+    team?.cancel();
     codex?.stop();
     slack?.cancel();
     bridge.stop();
