@@ -29,6 +29,7 @@ const server = http.createServer(async (req, res) => {
   if (packaged) env.PATH = `${process.env.SystemRoot}\\System32;${process.env.SystemRoot}`;
   app = await _electron.launch({ executablePath: packaged || path.join(root, 'node_modules/electron/dist/electron.exe'), args: [...(packaged ? [] : [root]), `--user-data-dir=${directory}`], env });
   const page = await app.firstWindow(); page.setDefaultTimeout(15000); page.on('pageerror', e => errors.push(e.message));
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 900));
   await page.getByRole('button', { name: '개인용 Personal' }).click();
   await page.evaluate(async endpoint => {
     const p = window.btk.personal;
@@ -87,6 +88,12 @@ const server = http.createServer(async (req, res) => {
     await page.waitForTimeout(150);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.screenshot({ path: path.join(root, `artifacts/team-${width}.png`) });
+    if (width === 390) {
+      await page.getByRole('button', { name: 'Show team setup', exact: true }).click();
+      await page.getByLabel('Objective', { exact: true }).fill('Narrow viewport follow-up');
+      await page.getByRole('button', { name: 'Run team task', exact: true }).click();
+      await page.waitForFunction(async () => (await window.btk.personal.team.state())?.turns.length === 2 && (await window.btk.personal.team.state()).status === 'completed');
+    }
   }
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ status: 'passed', checks: ['native-master-dispatch-synthesis', 'model-isolation', 'busy-mode-gate', 'tree-attach-existing', 'tree-create-worker-inline-settings', 'missing-model-disables-run', 'persisted-hierarchy', 'english', 'desktop-mobile-layout'], actualProviderRequests: false }));
