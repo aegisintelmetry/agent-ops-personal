@@ -1,19 +1,71 @@
-# AEGIS Agent Ops
+# AEGIS Agent Ops Personal
 
-AEGIS Agent Ops Personal / Enterprise 제품 소스 저장소입니다. 공개 준비 중이며 아직 비공개입니다.
-현재 범위는 **Personal 데스크톱 0.5.10 프리뷰와 독립 제품 코어**입니다.
+[한국어](README.ko.md) | [Windows download](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.10-preview) | [Security](SECURITY.md)
 
-0.5.10은 [Google Gemini API 로그인과 공유 연결 계정](docs/personal-google-accounts.md)을
-추가합니다. Google 데스크톱 OAuth 클라이언트 등록이 필요하며 Gemini 웹 구독 연결은 아닙니다.
-실제 계정 인증/추론 검증은 별도입니다. 기존 API 키와 Codex 연결은 유지합니다.
-Enterprise 웹/제어 모듈과 운영 러너 전체의 이전이 완료된 것은 아닙니다.
-AEGIS 보안 제품은 Enterprise 전용 별도 모듈이며 이 저장소에 포함하지 않습니다.
+An open-source desktop project by **AEGIS** for working with multiple language models, coordinating text-based agent teams, and keeping explicit local memory.
 
-## 데스크톱 실행
+**Security FDE is our primary focus.** Personal is a project we build in the open, not an enterprise security product or a replacement for our Security FDE work. We welcome individual use and feedback. Future enterprise integration will follow real user needs; it is not required to use Personal.
 
-Node.js 22.12 이상과 npm이 필요합니다.
+## What Works Today
+
+- Choose a model connection for each agent and keep conversations separate.
+- Organize a coordinator and 1–4 workers in a team tree, delegate text tasks, and combine responses. Up to two workers run concurrently.
+- Continue team conversations, inspect progress, and explicitly retry incomplete work.
+- Set role prompts and manually maintained memory with shared, team, or agent-specific scope.
+- Switch between Korean and English.
+- Try a read-only Slack sample for authentication checks and public-channel listing.
+
+For example, one worker can analyze a proposal while another critiques its assumptions, with the coordinator combining their responses. This is model-generated assistance, not independent verification of correctness.
+
+## Install
+
+Download `AEGIS-Agent-Ops-Setup-0.5.10-preview.exe` from the [release page](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.10-preview).
+
+1. Install on Windows x64 and open the app.
+2. Choose **Personal**. No AEGIS organization account or central server is required.
+3. Configure an agent's model connection, then start a conversation or configure a team.
+
+The installer bundles the local core; a separate Python or Node installation is not required to run it. The Codex connection requires a separately installed Codex CLI or VS Code Codex extension.
+
+**This is an unsigned preview**, not a production-ready release.
+
+## Model Connections
+
+| Connection | Current support |
+| --- | --- |
+| OpenAI, DeepSeek, Kimi, Gemini | Your own API key |
+| OpenAI-compatible / local endpoints | Explicitly configured endpoint and model |
+| ChatGPT / Codex | Existing per-agent Codex sign-in integration |
+| Gemini API OAuth | Shared Google connections; your own Desktop OAuth client is required |
+
+Provider charges and limits apply. A chat subscription is not interchangeable with API access. Gemini OAuth uses the Google Cloud project's API permissions and usage, not a Gemini web subscription. See the [Google connection guide](docs/personal-google-accounts.md).
+
+## Data and Permissions
+
+Credentials and saved prompts/memory use the operating system's encrypted storage. Conversation history is held in memory and is not restored after quitting.
+
+Requests send conversation text and applicable enabled memory/role prompts to the selected model provider. Team objectives and worker results are shared with the coordinator. Agent-specific memory is not directly copied to other agents, but its contents can appear in generated results.
+
+Local storage does **not** mean cloud inference is offline. Do not send confidential information unless the selected provider and your usage are appropriate for it.
+
+## Current Limits
+
+- Text-only assistance: no general file access, shell execution, or autonomous tool execution.
+- Memory is manual and keyword-based; no automatic learning, embeddings, or cloud synchronization.
+- The Slack sample does not post messages or assign work through Slack.
+- Real Google OAuth sign-in/inference and fresh-PC installation need validation beyond automated fixtures.
+- No enterprise security guarantees, compliance certification, response-time SLA, or long-term support commitment.
+- Organization adapters are present, but private servers and the operational fleet are not included. Personal does not require them.
+
+Automated tests cover local behavior, isolation, UI flows, and packaging. They do not prove model accuracy or every provider/account combination.
+
+## Development
+
+On Windows, install Node.js 22.12+ and Python 3.12 for core development/testing:
 
 ```powershell
+python -m pip install -r apps/desktop/build-requirements.txt
+python -m unittest discover -s tests/desktop
 cd apps/desktop
 npm ci
 npm test
@@ -22,71 +74,26 @@ npm run test:desktop
 npm start
 ```
 
-첫 실행에서 개인용을 선택하고 에이전트별 모델 연결을 설정합니다.
-첫 화면과 앱 상단의 언어 메뉴에서 한국어·English를 선택할 수 있으며 재실행 후에도 유지됩니다.
-언어 변경은 모델·인증·대화 내용을 바꾸지 않습니다. 사용자 이름과 외부 서비스 원문은 번역하지 않습니다.
-API 키는 앱에 입력하며 OS 보안 저장소로 암호화합니다.
-ChatGPT 연결에는 별도의 Codex CLI 또는 VS Code Codex 확장이 필요합니다.
-대화는 메모리에만 유지됩니다. 파일/명령 실행과 자동 도구 호출은 아직 지원하지 않습니다.
-
-## Windows 설치본
-
-Python 3.12와 Node.js가 설치된 Windows에서 실행합니다.
+Build an installer from the repository root:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File apps/desktop/build-windows.ps1
+powershell -NoProfile -File apps/desktop/build-windows.ps1
 ```
 
-빌드 스크립트는 격리된 Python 환경을 생성하며 필요한 빌드 의존성을 설치합니다.
-생성된 설치 파일은 내부 테스트용 미서명 프리뷰이며 Git에 포함하지 않습니다.
-0.5.1에는 창 크기에 따른 대화/입력창 확장과 작은 창 탐색/요약 패널 접기가 포함됩니다.
-0.5.2에는 조직 IPC 차단 강화, 공용 기본값 정리, AEGIS 표시명과 독립 검증 경로가 포함됩니다.
-0.5.3은 운영 하네스 소스를 제거하고 `agent_ops` 제품 코어와 읽기 전용 서비스 어댑터로 분리했습니다.
-0.5.4에는 Apache-2.0 라이선스와 저작권자 고지를 소스 및 Windows 패키지에 추가했습니다.
-0.5.5에는 한국어·영어 화면 선택, 저장된 언어 복원과 확인창 번역을 추가했습니다.
-0.5.6에는 펄스널 팀 작업을 추가했습니다. 마스터와 작업 에이전트 1~4명을 선택하며,
-최대 2개 병렬 실행과 결과 취합을 지원합니다. 호출은 최대 6회이고 자동 재시도는 없습니다.
-에이전트별 기존 대화·키는 공유하지 않으며, 목표와 작업 결과 공유는 실행 전 확인합니다.
-실행 결과는 메모리에만 유지됩니다. 작업자 실패·부분 응답은 전체 완료로 표시하지 않습니다.
-0.5.7은 ChatGPT 모델 설정에서 대화로 전환할 때 중복 React key로 이름 입력란이 남아
-대화가 오른쪽으로 밀리고 실행 요약이 아래로 내려가는 문제를 수정했습니다.
-0.5.8은 팀 구성을 마스터와 하위 에이전트 트리로 표시합니다. 트리에서 추가·선택 후
-같은 화면에서 이름과 모델 연결을 설정하며, 미설정 참여자가 있으면 실행을 막습니다.
-팀 구성은 저장되며 팀에서 제외해도 에이전트와 키는 삭제하지 않습니다.
-0.5.9는 팀 작업을 후속 대화가 가능한 채팅 화면으로 바꾸고 옆 패널에 구성·진행 상태를 둡니다.
-에이전트 설정의 모델/프롬프트/메모리 탭에서 역할과 로컬 기억을 관리합니다.
-메모리는 수동 저장·활성화하며 OS 암호화로 저장합니다. 공통/팀/에이전트 전용 범위와
-키워드 검색을 지원합니다. 자동 수집·임베딩·클라우드 동기화는 없습니다.
-실패 원인을 정제하여 표시하고 명시적 재시도 시 완료된 작업 결과를 재사용합니다.
-설치본의 `resources/THIRD-PARTY-NOTICES.txt`에 UI·Electron·Python·PyYAML·PyInstaller 고지를 포함합니다.
+See [contributing](CONTRIBUTING.md) and [Windows CI](https://github.com/aegisintelmetry/agent-ops-public-preview/actions/workflows/desktop-checks.yml).
 
-## 소스 경계
+## History and Scope
 
-- `apps/desktop`: Electron/React 앱, 모델 어댑터, 에이전트 설정, 테스트.
-- `agent_ops/desktop`: 패키징된 로컬 브리지, 설치·런타임 어댑터.
-- `agent_ops/client`: 명시적 프로필 인증, 읽기 전용 MCP, 설치 등록·진행 보고, 모델 대화.
-- `agent_ops/models`: 공개 클라이언트에 필요한 프로필 데이터 검증.
-- `tests/desktop`: 로컬 코어 회귀 시험.
-- `source-import.json`: 초기 가져오기 파일 및 SHA256. 이후 변경의 권위는 이 저장소의 Git 이력입니다.
+This repository preserves **selected product development history**, starting from a licensed 0.5.4 product snapshot. Earlier private operational code and its Git history are deliberately excluded. Later improvements retain their original authorship and change descriptions. See the [history policy](docs/public-history.md).
 
-운영 콘솔, 태스크 생성·선점·상태 변경, 거버넌스 작성, 복구 커널은 제품 코어에 포함하지 않습니다.
-중앙 서비스와 전체 PC 러너 배포는 계속
-별도의 비공개 운영 하네스에서 관리하며 이 저장소로 이전하지 않았습니다.
-엔터프라이즈 기능에는 외부 인증/제어 서버와 배포된 러너 환경이 필요합니다.
-조직 설치 어댑터는 승인된 외부 운영 번들을 검증·설치하며, 그 번들은 공개 앱 소스에 포함하지 않습니다.
-`harness/runners` 같은 경로는 외부 번들 데이터 계약이며 Python `harness` 모듈 의존성이 아닙니다.
-패키징 시 하네스 import를 차단하고 PyInstaller에서도 제외합니다.
-사용자 설정, 토큰, 인증 상태, 로컬 실행 로그, 설치 파일은 복사하지 않았습니다.
+The source includes `apps/desktop`, the `agent_ops` client/core, and tests. Private Security FDE service implementations, central servers, and operational harnesses are not included. Legacy `BTK_*` identifiers remain for compatibility, not as preconfigured access to internal systems.
 
-`BTK_*` 환경 변수, IPC 이름, 코어 실행 파일명은 기존 프로필 호환용 내부 식별자입니다.
-새 설치의 기본 러너 신원은 비어 있으며 운영 특권 러너를 자동 선택하지 않습니다.
-제품명 변경은 기존 프리뷰의 앱 ID를 변경하므로 이전 설치본과 별도로 설치됩니다.
-기존 설정은 자동 복사하거나 삭제하지 않습니다. 전환 전 기존 앱을 종료하세요.
+## Feedback and Security
 
-## 공개 조건
+Bug reports, focused pull requests, and useful real-world workflows are welcome. Include the app version, Windows version, and reproduction steps without credentials or private conversations.
 
-공개 클라이언트와 독립 제품 코어의 라이선스는 [Apache-2.0](LICENSE), 저작권자는 `aegisintelmetry`입니다.
-제3자 구성요소에는 각자의 라이선스가 적용됩니다. 이 저장소 밖의 비공개 Enterprise 서버와
-운영 하네스는 이 라이선스 적용 범위에 포함하지 않습니다.
-기존 코드 공개 권한, 제작사 명의 및 과거 Git 이력 처리 확인 전에는 저장소를 공개하지 않습니다.
-미서명 프리뷰는 정식 배포본이 아닙니다. [공개 체크리스트](docs/public-release.md)를 확인하세요.
+Report vulnerabilities privately to **contact@aegistelemetry.com**, not in public issues. See [SECURITY.md](SECURITY.md).
+
+## License
+
+[Apache-2.0](LICENSE). Copyright (c) 2026 aegisintelmetry. Third-party components retain their own licenses; see [NOTICE](NOTICE) and the installer notices. Private services outside this repository are not covered by this license.
