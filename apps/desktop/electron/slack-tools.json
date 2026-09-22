@@ -1,0 +1,4 @@
+[
+  { "id": "auth.test", "name": "연결 확인", "scope": null, "readOnly": true },
+  { "id": "conversations.list", "name": "공개 채널 조회", "scope": "channels:read", "readOnly": true }
+]

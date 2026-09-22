@@ -1,0 +1,57 @@
+.workspace-app { background: #fafafa; color: #292b2e; }
+.workspace-app .sidebar { background: #f0f0f1; border-color: #e0e0e3; padding-top: 20px; }
+.workspace-app .brand-symbol { background: #292f2d; height: 34px; width: 34px; }
+.workspace-app .brand small { color: #737478; max-width: 130px; overflow-wrap: anywhere; }
+.workspace-app .new-chat { margin: 25px 0 16px; background: transparent; border: 0; box-shadow: none; justify-content: flex-start; padding: 0 12px; color: #626468; }
+.workspace-app .sidebar nav button { min-height: 36px; padding-top: 8px; padding-bottom: 8px; color: #626468; }
+.workspace-app .sidebar nav button.active { background: #fff; color: #292b2e; }
+.workspace-app .sidebar nav button:hover, .workspace-app .new-chat:hover { background: #e7e7e9; }
+.workspace-app .topbar { height: 54px; background: #fafafa; border-color: #e5e5e7; }
+.workspace-app .page-heading { padding-top: 24px; }
+.workspace-app.chat-view .page-heading { display: none; }
+.session-list { min-height: 80px; overflow: auto; margin-top: 26px; scrollbar-width: thin; }
+.session-list h2 { display: flex; justify-content: space-between; padding: 0 12px 10px; font-size: 11px; font-weight: 500; color: #797b80; }
+.session-row { display: flex; align-items: center; min-height: 34px; border-radius: 6px; margin: 3px 0; }
+.session-row.selected { background: #fff; }
+.session-select { display: flex; gap: 8px; min-width: 0; flex: 1; align-items: center; padding: 9px 8px; text-align: left; font-size: 12px; }
+.session-select span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.session-select svg { color: #717579; }
+.session-row .icon-button { width: 26px; height: 26px; }
+.session-dialog { max-width: 410px; }
+.session-dialog p { overflow-wrap: anywhere; }
+.session-dialog-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; }
+.workspace-app .chat-layout { grid-template-columns: minmax(0, 1fr); min-height: 0; border-top: 0; }
+.workspace-app .chat-layout.with-context { grid-template-columns: minmax(0, 1fr) 270px; }
+.workspace-app .conversation { background: #fafafa; min-height: 500px; height: calc(100dvh - 54px); padding: 0 max(24px, calc((100% - 760px) / 2)); }
+.workspace-app .conversation-bar { display: none; }
+.workspace-app .transcript { padding-top: 30px; }
+.workspace-app .is-empty .transcript { flex: 0 0 auto; overflow: visible; padding: 0; margin-top: auto; }
+.workspace-app .empty-chat { min-height: 0; max-width: none; padding: 0 0 26px; }
+.workspace-app .empty-chat h2 { color: #292b2e; font-size: 28px; line-height: 1.5; font-weight: 600; }
+.workspace-logo { color: #326551; }
+.workspace-app .composer { background: #fff; box-shadow: 0 2px 8px #20202006; border-color: #c8c9d0; margin-top: 0; }
+.workspace-app .composer:focus-within { border-color: #6b80cb; }
+.workspace-app .composer textarea { min-height: 74px; }
+.workspace-app .composer-bottom > span { color: #767880; }
+.workspace-app .send { border-radius: 50%; background: #216345; }
+.workspace-app .send:disabled { background: #e2e4e6; color: #85888d; }
+.workspace-app .is-empty .composer-note { margin-bottom: auto; padding-bottom: 70px; }
+.workspace-app .context-panel { background: #f5f5f6; border-color: #e0e0e3; }
+.workspace-app .message { max-width: 760px; margin-inline: auto; }
+@media (max-width: 1050px) {
+  .workspace-app .chat-layout.with-context { grid-template-columns: minmax(0, 1fr); }
+  .workspace-app .with-context .context-panel { display: flex; border-top: 1px solid #e0e0e3; border-left: 0; }
+}
+@media (max-width: 640px) {
+  .workspace-app .sidebar { padding-top: 13px; }
+  .workspace-app .new-chat { margin: 0; padding: 0 10px; }
+  .workspace-app .brand small { max-width: 160px; }
+  .workspace-app .sidebar nav button { padding: 10px 3px; }
+  .session-list { max-height: 112px; margin-top: 10px; padding-bottom: 8px; }
+  .session-list h2 { padding-bottom: 3px; }
+  .session-row { margin: 0; }
+  .workspace-app .topbar { padding-inline: 16px; height: auto; min-height: 50px; flex-wrap: wrap; gap: 8px; padding-block: 9px; }
+  .workspace-app .conversation { height: 540px; min-height: 440px; padding: 0 20px; }
+  .workspace-app .empty-chat h2 { font-size: 22px; }
+  .workspace-app .is-empty .composer-note { padding-bottom: 30px; }
+}

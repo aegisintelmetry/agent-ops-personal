@@ -1,0 +1,9 @@
+node_modules/
+dist/
+artifacts/
+release/
+release-*/
+.build-venv/
+.build/
+stage/
+*.log

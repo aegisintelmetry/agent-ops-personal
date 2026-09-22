@@ -1,0 +1,12 @@
+AEGIS Agent Ops
+Copyright (c) 2026 aegisintelmetry
+
+Licensed under the Apache License, Version 2.0. See LICENSE.
+
+This product includes desktop and client components originally extracted
+from the BTK Agent Harness workspace. Initial import provenance is recorded
+in source-import.json. Operational fleet orchestration is not included in
+the current product source tree.
+
+Third-party components retain their respective licenses and notices.
+Windows distributions include resources/THIRD-PARTY-NOTICES.txt.

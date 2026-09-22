@@ -1,0 +1,55 @@
+name: Desktop checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/desktop/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r apps/desktop/build-requirements.txt
+      - run: python -m unittest discover -s tests/desktop
+      - run: npm ci
+        working-directory: apps/desktop
+      - name: Verify Electron runtime
+        working-directory: apps/desktop
+        run: |
+          node node_modules/electron/install.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path node_modules/electron/dist/electron.exe)) { throw 'Electron runtime missing' }
+      - run: npm test
+        working-directory: apps/desktop
+      - run: npm run build
+        working-directory: apps/desktop
+      - run: npm run test:desktop
+        working-directory: apps/desktop
+        env:
+          DEBUG: pw:browser
+      - run: npm audit --audit-level=high
+        working-directory: apps/desktop
+      - name: Build isolated Windows package
+        run: powershell -NoProfile -File apps/desktop/build-windows.ps1 -Unpacked
+      - name: Verify packaged core without development runtimes
+        working-directory: apps/desktop
+        env:
+          DEBUG: pw:browser
+        run: |
+          $env:BTK_DESKTOP_TEST_EXE = Join-Path (Get-Location) 'release/win-unpacked/AEGIS Agent Ops Preview.exe'
+          node tests/package-smoke.cjs --fresh-only
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/edition-boundary-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/agents-ui-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/stdio-smoke.cjs

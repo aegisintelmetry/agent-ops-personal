@@ -1,0 +1,36 @@
+{
+  "appId": "aegis.agentops.preview",
+  "productName": "AEGIS Agent Ops Preview",
+  "copyright": "Copyright (c) 2026 aegisintelmetry",
+  "asar": true,
+  "afterPack": "./after-pack.cjs",
+  "directories": { "output": "release" },
+  "files": ["dist/**", "electron/**", "package.json", "!node_modules/**"],
+  "extraResources": [
+    { "from": "../../LICENSE", "to": "LICENSE" },
+    { "from": "../../NOTICE", "to": "NOTICE" },
+    { "from": "stage/THIRD-PARTY-NOTICES.txt", "to": "THIRD-PARTY-NOTICES.txt" },
+    { "from": "stage/btk-desktop-core", "to": "core", "filter": ["**/*"] },
+    { "from": "stage/desktop-release.json", "to": "desktop-release.json" }
+  ],
+  "npmRebuild": false,
+  "win": {
+    "target": [{ "target": "nsis", "arch": ["x64"] }],
+    "artifactName": "AEGIS-Agent-Ops-Setup-${version}-preview.${ext}",
+    "requestedExecutionLevel": "asInvoker",
+    "signExecutable": false
+  },
+  "nsis": {
+    "include": "installer.nsh",
+    "oneClick": false,
+    "perMachine": false,
+    "allowElevation": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "runAfterFinish": false,
+    "deleteAppDataOnUninstall": false,
+    "installerLanguages": ["ko_KR", "en_US"]
+  },
+  "publish": null
+}

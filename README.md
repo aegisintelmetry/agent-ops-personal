@@ -1,0 +1,71 @@
+# AEGIS Agent Ops
+
+AEGIS Agent Ops Personal / Enterprise 제품 소스 저장소입니다. 공개 준비 중이며 아직 비공개입니다.
+현재 범위는 **Personal 데스크톱 0.5.4 프리뷰와 독립 제품 코어**입니다.
+Enterprise 웹/제어 모듈과 운영 러너 전체의 이전이 완료된 것은 아닙니다.
+AEGIS 보안 제품은 Enterprise 전용 별도 모듈이며 이 저장소에 포함하지 않습니다.
+
+## 데스크톱 실행
+
+Node.js 22.12 이상과 npm이 필요합니다.
+
+```powershell
+cd apps/desktop
+npm ci
+npm test
+npm run build
+npm run test:desktop
+npm start
+```
+
+첫 실행에서 개인용을 선택하고 에이전트별 모델 연결을 설정합니다.
+API 키는 앱에 입력하며 OS 보안 저장소로 암호화합니다.
+ChatGPT 연결에는 별도의 Codex CLI 또는 VS Code Codex 확장이 필요합니다.
+대화는 메모리에만 유지됩니다. 파일/명령 실행과 자동 도구 호출은 아직 지원하지 않습니다.
+
+## Windows 설치본
+
+Python 3.12와 Node.js가 설치된 Windows에서 실행합니다.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File apps/desktop/build-windows.ps1
+```
+
+빌드 스크립트는 격리된 Python 환경을 생성하며 필요한 빌드 의존성을 설치합니다.
+생성된 설치 파일은 내부 테스트용 미서명 프리뷰이며 Git에 포함하지 않습니다.
+0.5.1에는 창 크기에 따른 대화/입력창 확장과 작은 창 탐색/요약 패널 접기가 포함됩니다.
+0.5.2에는 조직 IPC 차단 강화, 공용 기본값 정리, AEGIS 표시명과 독립 검증 경로가 포함됩니다.
+0.5.3은 운영 하네스 소스를 제거하고 `agent_ops` 제품 코어와 읽기 전용 서비스 어댑터로 분리했습니다.
+0.5.4에는 Apache-2.0 라이선스와 저작권자 고지를 소스 및 Windows 패키지에 추가했습니다.
+설치본의 `resources/THIRD-PARTY-NOTICES.txt`에 UI·Electron·Python·PyYAML·PyInstaller 고지를 포함합니다.
+
+## 소스 경계
+
+- `apps/desktop`: Electron/React 앱, 모델 어댑터, 에이전트 설정, 테스트.
+- `agent_ops/desktop`: 패키징된 로컬 브리지, 설치·런타임 어댑터.
+- `agent_ops/client`: 명시적 프로필 인증, 읽기 전용 MCP, 설치 등록·진행 보고, 모델 대화.
+- `agent_ops/models`: 공개 클라이언트에 필요한 프로필 데이터 검증.
+- `tests/desktop`: 로컬 코어 회귀 시험.
+- `source-import.json`: 초기 가져오기 파일 및 SHA256. 이후 변경의 권위는 이 저장소의 Git 이력입니다.
+
+운영 콘솔, 태스크 생성·선점·상태 변경, 거버넌스 작성, 복구 커널은 제품 코어에 포함하지 않습니다.
+중앙 서비스와 전체 PC 러너 배포는 계속
+별도의 비공개 운영 하네스에서 관리하며 이 저장소로 이전하지 않았습니다.
+엔터프라이즈 기능에는 외부 인증/제어 서버와 배포된 러너 환경이 필요합니다.
+조직 설치 어댑터는 승인된 외부 운영 번들을 검증·설치하며, 그 번들은 공개 앱 소스에 포함하지 않습니다.
+`harness/runners` 같은 경로는 외부 번들 데이터 계약이며 Python `harness` 모듈 의존성이 아닙니다.
+패키징 시 하네스 import를 차단하고 PyInstaller에서도 제외합니다.
+사용자 설정, 토큰, 인증 상태, 로컬 실행 로그, 설치 파일은 복사하지 않았습니다.
+
+`BTK_*` 환경 변수, IPC 이름, 코어 실행 파일명은 기존 프로필 호환용 내부 식별자입니다.
+새 설치의 기본 러너 신원은 비어 있으며 운영 특권 러너를 자동 선택하지 않습니다.
+제품명 변경은 기존 프리뷰의 앱 ID를 변경하므로 이전 설치본과 별도로 설치됩니다.
+기존 설정은 자동 복사하거나 삭제하지 않습니다. 전환 전 기존 앱을 종료하세요.
+
+## 공개 조건
+
+공개 클라이언트와 독립 제품 코어의 라이선스는 [Apache-2.0](LICENSE), 저작권자는 `aegisintelmetry`입니다.
+제3자 구성요소에는 각자의 라이선스가 적용됩니다. 이 저장소 밖의 비공개 Enterprise 서버와
+운영 하네스는 이 라이선스 적용 범위에 포함하지 않습니다.
+기존 코드 공개 권한, 제작사 명의 및 과거 Git 이력 처리 확인 전에는 저장소를 공개하지 않습니다.
+미서명 프리뷰는 정식 배포본이 아닙니다. [공개 체크리스트](docs/public-release.md)를 확인하세요.

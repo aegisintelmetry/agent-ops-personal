@@ -1,0 +1,462 @@
+{
+  "source": "btk-agent-harness local workspace",
+  "scope": "personal desktop and measured core dependency closure",
+  "files": [
+    {
+      "path": "apps/desktop/.gitignore",
+      "sha256": "82a378f3024c04801129b0465cd8a1dc1ac3739120967474cbd51928b3542525"
+    },
+    {
+      "path": "apps/desktop/build-requirements.txt",
+      "sha256": "00443c761faef597259bedcd715bb92c8c40254940909e687137ef7940372d49"
+    },
+    {
+      "path": "apps/desktop/build-windows.ps1",
+      "sha256": "2add506da1ebe31ae6c1b0f22a042dff1e79c2ef5985897f9dd873754358f1a7"
+    },
+    {
+      "path": "apps/desktop/core.spec",
+      "sha256": "4181a08360ddf4f04f244298884b7c1754d7e83648b9c4834f8df86d2c1c5f14"
+    },
+    {
+      "path": "apps/desktop/electron/agents.cjs",
+      "sha256": "cb6209d37cb968969969f5c5904c611472a0e4e1ceb13fe8eed099112ca3b58d"
+    },
+    {
+      "path": "apps/desktop/electron/bridge.cjs",
+      "sha256": "0970be548f3f8a5642dfe09cdd4d76c164fb654319874f828db2154474e80505"
+    },
+    {
+      "path": "apps/desktop/electron/codex.cjs",
+      "sha256": "84ac4808a60c513f5c14edbdeab6b898b553fa598e822cc0926e195ac9312aa1"
+    },
+    {
+      "path": "apps/desktop/electron/main.cjs",
+      "sha256": "078e6e2343985816f3fb9b62abb2900d24520d4cfaa59ddf06b9b5cd12956e60"
+    },
+    {
+      "path": "apps/desktop/electron/personal.cjs",
+      "sha256": "22f201ae17b341b6c69ae20c5b91bd828c957d8d86f3d7c68afd52b6b25ccb91"
+    },
+    {
+      "path": "apps/desktop/electron/preload.cjs",
+      "sha256": "bfebb910632b89d7f37d949e930a42e9c23dfb2149fdfe4a64f4dd17eee9fc65"
+    },
+    {
+      "path": "apps/desktop/electron/providers.json",
+      "sha256": "e5ecbdcf2fa9aff9c755ce2327d8fe2f1148cb5093992bce80403e964f6602bc"
+    },
+    {
+      "path": "apps/desktop/electron/runtime.cjs",
+      "sha256": "5278e185115ac38b15b52db4408f81713d28904a64539bef43d0e391800300af"
+    },
+    {
+      "path": "apps/desktop/electron/security.cjs",
+      "sha256": "eaedb88eb539da2281e02b405d15559be681901194ed7a01abfef7ebc8b9b841"
+    },
+    {
+      "path": "apps/desktop/electron/slack-tools.json",
+      "sha256": "345e55585eb926b22ac8a4cfe053e9e31b49e90b704a07bbace6403a25a0864c"
+    },
+    {
+      "path": "apps/desktop/electron/slack.cjs",
+      "sha256": "891a6c754b5a574eca6bf3dc080f968b50b2d09f5427d163e89191ecd629d164"
+    },
+    {
+      "path": "apps/desktop/electron/stdio.cjs",
+      "sha256": "2f41ea4af266bc288beebf46b7f053316124fe23ce3b9c185bbdaef512a5f2a1"
+    },
+    {
+      "path": "apps/desktop/electron-builder.json",
+      "sha256": "1e6168c6565298ed18e4387a13ab68454644d59c016e2edeb5f5f2e0b23ca68b"
+    },
+    {
+      "path": "apps/desktop/index.html",
+      "sha256": "92852358c109b29a00345dc12b12ab4903ab3961f94a976ab59bc2b74ea3a6b7"
+    },
+    {
+      "path": "apps/desktop/installer.nsh",
+      "sha256": "3f8408b929e98bc602684ff2f52f9895fce4e389620078bd656e04ab9779f8ba"
+    },
+    {
+      "path": "apps/desktop/package-lock.json",
+      "sha256": "8ac5386b367420ce5dff1ebf645af0bbabfbb87a6a02ee4ce8d6fd8dbf33a3e4"
+    },
+    {
+      "path": "apps/desktop/package.json",
+      "sha256": "7be2aa7fe4dae1a533fa66bb3b8742231c47396494e7b662d35a0a0c509edae3"
+    },
+    {
+      "path": "apps/desktop/README.md",
+      "sha256": "8cbde06ded8354d62e8d8b889844f2060b3d5dab868ecfbb5dc88e89960c1092"
+    },
+    {
+      "path": "apps/desktop/src/api.js",
+      "sha256": "a84ae93b10aabb3e4085117f91eb4054bd8a453a068985804f17304dc457cbd5"
+    },
+    {
+      "path": "apps/desktop/src/CodexSettings.jsx",
+      "sha256": "b2010fefb14c324d59f6cc2e0cc4e50dc24927dbc2045d36ecc272127761c2da"
+    },
+    {
+      "path": "apps/desktop/src/main.jsx",
+      "sha256": "788e47ea7af78ca6c0e447588291d81b16cde8b5a5bd35014d05a737f6b99274"
+    },
+    {
+      "path": "apps/desktop/src/personal.css",
+      "sha256": "b733c15ce1e1f75db92cfaaf9cc51ff6cecd5ac274bd5d7b6999bb24eab40c61"
+    },
+    {
+      "path": "apps/desktop/src/PersonalApp.jsx",
+      "sha256": "1bb5b73b692c025276b4e0c21d9f510f53c0ca0052420201abcc04e2a8621787"
+    },
+    {
+      "path": "apps/desktop/src/RunSummary.jsx",
+      "sha256": "40819da1cf023b3358aa3cd8b1c9c58ae019ea82cfcb1dfda94625b8ba051500"
+    },
+    {
+      "path": "apps/desktop/src/sessions.mjs",
+      "sha256": "5dcac25f20a521328b720229eeb1ee27ec544ff2f14bc9b2e6a7bcd8a3a6643e"
+    },
+    {
+      "path": "apps/desktop/src/SetupPanel.jsx",
+      "sha256": "319bd321cc2efeb936e98f8958cd35f1f64a87c44bd8bf9add0f32bf5e115018"
+    },
+    {
+      "path": "apps/desktop/src/SlackPanel.jsx",
+      "sha256": "5a848312eadad4d926873c56aec4ac0f9f755b2a185ede859bce630441e31c05"
+    },
+    {
+      "path": "apps/desktop/src/styles.css",
+      "sha256": "68e6306836be98eb2d158b6f355a9a72ace85122f9268ada22d24cf9f540e0f3"
+    },
+    {
+      "path": "apps/desktop/src/workspace.css",
+      "sha256": "434cb3ac4b6834dfea2e17529f98cee593b45d164e46427082d1aa6a267ec0ac"
+    },
+    {
+      "path": "apps/desktop/start.ps1",
+      "sha256": "52b498f0c59ede8b341c6348f1ce7a1c0c1714549e596aaef3b6b158dda46054"
+    },
+    {
+      "path": "apps/desktop/tests/agents-ui-smoke.cjs",
+      "sha256": "b8d591d4980a1259085c216bed3a4a9ae79739ca9151cdd20de0ce71f2044114"
+    },
+    {
+      "path": "apps/desktop/tests/agents.test.cjs",
+      "sha256": "9bc769269bf1a8d2d03a3fe0b59d78123468cda7aef1565fea4d1a7be7e52184"
+    },
+    {
+      "path": "apps/desktop/tests/codex-runtime-smoke.cjs",
+      "sha256": "40641bea9cae41c6eed50190953c74b759953c8d3c05a48f16c5649b20b09364"
+    },
+    {
+      "path": "apps/desktop/tests/codex-ui-smoke.cjs",
+      "sha256": "d19e0cc5bc2c30d435591c665682b892e6ff88a5b2ca51d988d0e740b7997d99"
+    },
+    {
+      "path": "apps/desktop/tests/codex.test.cjs",
+      "sha256": "15eb2c4fc86c73ef4b1532bbe655255399919d95ada62a731f1eb088ef462f1c"
+    },
+    {
+      "path": "apps/desktop/tests/connector-smoke.cjs",
+      "sha256": "0397c71e9d748db8a410e4c7432781bff80735c9a31f67a2afc824ae948e4763"
+    },
+    {
+      "path": "apps/desktop/tests/deployment-smoke.cjs",
+      "sha256": "2ad8ab7f9c2abaa0726b50628e594bbc69ea88af9687a3c541900c0c6609a3e8"
+    },
+    {
+      "path": "apps/desktop/tests/memory-smoke.cjs",
+      "sha256": "d85b05943a0662ff8c4cbf98d9ab39a0b92aa09e036cf484e9f799619dce47af"
+    },
+    {
+      "path": "apps/desktop/tests/package-smoke.cjs",
+      "sha256": "8fa4f0efe528ce569c53d194d76a78727a6d2ee4298602f17aa0d76cd3d83af8"
+    },
+    {
+      "path": "apps/desktop/tests/personal-responsive.cjs",
+      "sha256": "1237dd597d1e9229dfd584142a984885fc142eb4af264b1d37c8a38f4276b50a"
+    },
+    {
+      "path": "apps/desktop/tests/personal-smoke.cjs",
+      "sha256": "8881a0c5e238797642d1bf24d9883ee681fe891ff78504820bc38f8e5e71cceb"
+    },
+    {
+      "path": "apps/desktop/tests/personal-window-smoke.cjs",
+      "sha256": "9ff337225dc63b2d260bd6e3b04b0db612897f172b5ac4fb999d446f84f3ad80"
+    },
+    {
+      "path": "apps/desktop/tests/personal.test.cjs",
+      "sha256": "1679114d48ac913e1e6050778285481c5c5cc8287b82bc4b2667b29c29ea9b64"
+    },
+    {
+      "path": "apps/desktop/tests/providers-ui-smoke.cjs",
+      "sha256": "85d524c57919e5d56adf92fec4bc4a75933fe8119244e962b54822a08aba0060"
+    },
+    {
+      "path": "apps/desktop/tests/runtime.test.cjs",
+      "sha256": "c87344c8f5cdd663ebb726c57b683564080d61827268f5e73da1650fe34758e5"
+    },
+    {
+      "path": "apps/desktop/tests/security.test.cjs",
+      "sha256": "e031d0332001e1b9ef5d286fe22dee7153d5fcb75ca831b4e16aee6ac0b65499"
+    },
+    {
+      "path": "apps/desktop/tests/sessions.test.cjs",
+      "sha256": "c1e66b1ccfeda95fa9ef2f8f5d2dc119e940d9c3ba8276a1cccc712147a09e04"
+    },
+    {
+      "path": "apps/desktop/tests/slack.test.cjs",
+      "sha256": "f786c5d1b180dd570d729a779a106bda61613efc1b6b38c707a258ce5c01c298"
+    },
+    {
+      "path": "apps/desktop/tests/smoke.cjs",
+      "sha256": "015d233d0871a3001c3ad917371cefe9708d0849868df035e42d7ee93c18c991"
+    },
+    {
+      "path": "apps/desktop/tests/stdio-smoke.cjs",
+      "sha256": "868a7f8812c5936ef70a18e48ee6fb8b86648d8e1d0264301725f5d5c081df76"
+    },
+    {
+      "path": "apps/desktop/tests/stdio.test.cjs",
+      "sha256": "7799565f774be95c5757df55360382965466cded7abb00a8997e2338cc6de113"
+    },
+    {
+      "path": "apps/desktop/tests/workspace-smoke.cjs",
+      "sha256": "26115bc0c408ddad3c6d796401a75e7779ae816170ff9955cd475250fb87b4f2"
+    },
+    {
+      "path": "apps/desktop/vite.config.js",
+      "sha256": "bf732e0801f17e8dcdc415d3d25fe4ee2a1246cb662120d0631ab0695b462f77"
+    },
+    {
+      "path": "docs/agent-ops-personal-agents.md",
+      "sha256": "50c5982fafd55807e96e44ed21fbf1e6e53917a151763a797add2aaa60431912"
+    },
+    {
+      "path": "docs/agent-ops-personal-codex.md",
+      "sha256": "7f8b30f1b5a70cc92252d0ad38599150bd6e5ba1b565242d66beb001a0de3b0c"
+    },
+    {
+      "path": "docs/agent-ops-personal-plan.md",
+      "sha256": "fcedf608a64c5015926c97fce374fc6a94589f5dd087132aeadb636301d1e16f"
+    },
+    {
+      "path": "docs/agent-ops-personal-providers.md",
+      "sha256": "8ed2f96b6b8e5ab729bc99dbc41cb05ee4601c5be7c446c2109dbd1467a83281"
+    },
+    {
+      "path": "harness/cli/__init__.py",
+      "sha256": "4ef44ea76193909c713ef570fb0d1c88fc8ee97cddc14e470b19cd2c4a21f6f0"
+    },
+    {
+      "path": "harness/cli/agent_adapter.py",
+      "sha256": "7856b9cd595db6d0be22828a9c25333279223e9968fd07eb5830a174d436f967"
+    },
+    {
+      "path": "harness/cli/agent_chat.py",
+      "sha256": "18734afcbd661f500c447e115fef6f9898576b2b2954a5fd6314ec0b38021fa4"
+    },
+    {
+      "path": "harness/cli/auth_session.py",
+      "sha256": "5ebfebcfc4d5f227761a19f7b0de706fe009ddc7c01b2ea5772ba86c1d868e3a"
+    },
+    {
+      "path": "harness/cli/branding.py",
+      "sha256": "c2e964f0c0ecca98610b183a22a9e70e201ac7e39215e5e2c9f47252e03e5ece"
+    },
+    {
+      "path": "harness/cli/capabilities.py",
+      "sha256": "addf8cbcec2f5e9209455eabcb31e61c909726b7bc5ea4d80bc9274a79a7a06b"
+    },
+    {
+      "path": "harness/cli/central_auth.py",
+      "sha256": "1621a82afe4cfb5444828b0b019d7e60edd328adeb7cc6918728ee7c6df53b19"
+    },
+    {
+      "path": "harness/cli/commands/__init__.py",
+      "sha256": "d44a2caabad30775772f0f2f0231222935f1228af8c32fa9fd94bed05ff2bfb3"
+    },
+    {
+      "path": "harness/cli/commands/update.py",
+      "sha256": "32a1c9089eb57f811d4be4ee0fe6efff4d83dc576fb4b43b1ec14e9c4e1e781b"
+    },
+    {
+      "path": "harness/cli/config.py",
+      "sha256": "c9311fabea7f1b1b450bc5bab45244dbdb88d9260c4e094e1abff8664748e92f"
+    },
+    {
+      "path": "harness/cli/console.py",
+      "sha256": "2f8701db86278ff6689a59c4ec43de9c8235c067e7195acd1742d64fa96e6b3c"
+    },
+    {
+      "path": "harness/cli/governance.py",
+      "sha256": "db439da9d9a5447e156a2d120bf6e3a39524d59b639d22ad78a0c42afc86aabb"
+    },
+    {
+      "path": "harness/cli/halt.py",
+      "sha256": "b1ea9e86087702c853f94859a917eb0f9392220429a057a48c8c77af5a98f5cd"
+    },
+    {
+      "path": "harness/cli/local_state.py",
+      "sha256": "f87290d207acfbb58cb211a8c7c37eed868dfa446286336fba07f41e11569795"
+    },
+    {
+      "path": "harness/cli/output.py",
+      "sha256": "9edb883d6e04ab00b57215da1ba4d326e65e393120eeee5d9d761592cc08052a"
+    },
+    {
+      "path": "harness/cli/paths.py",
+      "sha256": "d05dc5d8ea47c882d6bc7a3d26674023c2771a6201d5ec3e4dfc110da0b78636"
+    },
+    {
+      "path": "harness/cli/stream_view.py",
+      "sha256": "f58c399229349a2fba555d0f6351434cd23c50134e8b98e5e51dd392c972ad8a"
+    },
+    {
+      "path": "harness/cli/write_safety.py",
+      "sha256": "b0129080f296fc675c800e23c76edbaee631f0cc2a909bd649f940ac38c55c08"
+    },
+    {
+      "path": "harness/desktop/__init__.py",
+      "sha256": "d597bfa26b9bf0622c8a6ebb34e59880cdccd33813ca712742e920240b75287a"
+    },
+    {
+      "path": "harness/desktop/bridge.py",
+      "sha256": "c2becb861480a84c7ed327411a6b77a169af993993fde30ddfa787933637edc7"
+    },
+    {
+      "path": "harness/desktop/build_windows.py",
+      "sha256": "b1dc089eabab1cb02c92ecda433fc1fdbc60db0572de217d5747a8b640d00a26"
+    },
+    {
+      "path": "harness/desktop/bundle_install.py",
+      "sha256": "f564ee0a9449f888d0c391f66014219485f909f1324847e394132f718fc7ea63"
+    },
+    {
+      "path": "harness/desktop/deployment.py",
+      "sha256": "a39a1d7bf5c511d79810291d602eacd93fe53e30315d8945124e72bee5dbd839"
+    },
+    {
+      "path": "harness/desktop/enrollment.py",
+      "sha256": "4ea04aa7ea568c9025a817b1d754902185dc4639aee2ef56d25da51d9b1b2b70"
+    },
+    {
+      "path": "harness/desktop/frozen_entry.py",
+      "sha256": "9a59ea79c86d0921bc70a17115a2c2432e28b6cdcb78c8e605816dba49c1b193"
+    },
+    {
+      "path": "harness/desktop/package_info.py",
+      "sha256": "52259870609a139546a3f8f1460b2275ef55be1842cff8351504e0020e782826"
+    },
+    {
+      "path": "harness/desktop/readiness.py",
+      "sha256": "7e61fc54ec316b7cf0f8d2a2843562c2b184d87e281d16bcb930a804ec91136e"
+    },
+    {
+      "path": "harness/desktop/runtime_host.py",
+      "sha256": "ec79640b96b654e3f3302a3f9825d38ec9a1a41f4b7485630dce21dc30d5a55e"
+    },
+    {
+      "path": "harness/desktop/service.py",
+      "sha256": "d1a3b379e0f334cbbab4439e4e865bb9bec92db7c7df03b754851b17ba630e4e"
+    },
+    {
+      "path": "harness/desktop/service_health.py",
+      "sha256": "cc53315af1537dbbebb23dbe8d9507321026fd8598bea596d99f907fce11939d"
+    },
+    {
+      "path": "harness/desktop/setup_runtime.py",
+      "sha256": "87088ccbced5d2da7f4540466bb35777480f2c236ebf32b008c899f53fdf0c86"
+    },
+    {
+      "path": "harness/desktop/windows_process.py",
+      "sha256": "8789b1a2af47425aebea3905f7e14bb754952a5ac1c1c303e618de5bba8c56c0"
+    },
+    {
+      "path": "harness/desktop/windows_runtime.py",
+      "sha256": "e06bd8556c4f9b7cf9bb50e44ff536e6b3d8d35a3a8fd2aa6d86e9722e76cd47"
+    },
+    {
+      "path": "harness/orchestrator/fleet_roster.py",
+      "sha256": "21723e2713800553b22960d4bf89cf675f416ba732ddc469e9cbf615195fd13b"
+    },
+    {
+      "path": "harness/orchestrator/governance_ledger.py",
+      "sha256": "bf7ab14cb45b35a8aacb1d329f4e3c678df936639c4fb0795cb99290883cd4f3"
+    },
+    {
+      "path": "harness/orchestrator/harness_io.py",
+      "sha256": "f622e1336435aae1cea39e64242197ac338944a04ddfd2a436ccb37c35a2762c"
+    },
+    {
+      "path": "harness/orchestrator/mcp_endpoint.py",
+      "sha256": "b602168a1778b8ec974685417906552bf81fff383c33291af9f529211a947243"
+    },
+    {
+      "path": "harness/orchestrator/mcp_runtime_client.py",
+      "sha256": "c0710a165bf8f922ce12ad7deaecbd89ded3f9cb185628cecb6a47e58de3e360"
+    },
+    {
+      "path": "harness/orchestrator/mcp_task_matching.py",
+      "sha256": "6c7ebdc73c76041cb878fdb12a3004babca7764ce2b9c15d051804904f9c9e69"
+    },
+    {
+      "path": "harness/orchestrator/profile_registry_client.py",
+      "sha256": "afd08fd8034d79d5ead97945da3462fc1186e63165616dda4ea0b45d1717ab75"
+    },
+    {
+      "path": "harness/orchestrator/recovery_kernel.py",
+      "sha256": "58bdeca197c350c42cba9b31b06c241a73c09f423573d5936f6a811711f2c9d6"
+    },
+    {
+      "path": "harness/orchestrator/status_vocabulary.py",
+      "sha256": "dd93ee9a2992c033ac3e37c16a0a8153d68da7e803ab189eb504a9f21084e3eb"
+    },
+    {
+      "path": "harness/orchestrator/task_create_routing.py",
+      "sha256": "b55307cb2838d56be0e9d46ec04fd4a6e28b0b156eda1fc159f4ef5899bf3d2c"
+    },
+    {
+      "path": "harness/profiledb/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "harness/profiledb/profile_schema.py",
+      "sha256": "ea48ce14e9410c01566a6c015bdb25c19ac01feeda106030e68f97e69dd12ce9"
+    },
+    {
+      "path": "tests/desktop/runtime_fixture.py",
+      "sha256": "28dd51338526c6ae221fe97c4b7272efd1c034f133da066663eebefe49ac00a1"
+    },
+    {
+      "path": "tests/desktop/test_bridge.py",
+      "sha256": "a4228ef0cfac79edc5f32f9dab936b875023ac960095fde139c614ce6a3dc37d"
+    },
+    {
+      "path": "tests/desktop/test_deployment.py",
+      "sha256": "a4734e2d275bd624e35e09d4dfaea1957eb6bd57ecf86437b67495c9723d2db9"
+    },
+    {
+      "path": "tests/desktop/test_readiness.py",
+      "sha256": "ae667dcc2903ca576c4fa705099172363ebb6149d153b69653c7639d8d99ced1"
+    },
+    {
+      "path": "tests/desktop/test_runtime_host.py",
+      "sha256": "6e22dbe7dad439e7dd355ce7473c536e32267c6f604d780ef6df89fe65e7838f"
+    },
+    {
+      "path": "tests/desktop/test_service.py",
+      "sha256": "928024eb72aab960c0022abe565f204b966dbca9b41ab38d1c5b4abe5fdcf02d"
+    },
+    {
+      "path": "tests/desktop/test_service_health.py",
+      "sha256": "c17925190442478760a6dfda71c5dfcc5e0c40a81c4fb4864fda3e9ac3a104b6"
+    },
+    {
+      "path": "tests/desktop/test_setup.py",
+      "sha256": "52bdcc3592861689cfdbcfcfda2dd369d9a3b396b2656b6e02299a2c169ee252"
+    }
+  ]
+}

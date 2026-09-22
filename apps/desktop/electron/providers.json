@@ -1,0 +1,8 @@
+[
+  { "id": "compatible", "label": "OpenAI 호환 API", "endpoint": "", "fixedEndpoint": false, "model": "", "maxTokens": 1024, "probeTokens": 64, "tokenField": "max_tokens" },
+  { "id": "openai", "label": "OpenAI", "endpoint": "https://api.openai.com/v1", "fixedEndpoint": true, "model": "", "maxTokens": 1024, "probeTokens": 64, "tokenField": "max_completion_tokens" },
+  { "id": "deepseek", "label": "DeepSeek", "endpoint": "https://api.deepseek.com", "fixedEndpoint": true, "model": "deepseek-v4-flash", "maxTokens": 8192, "probeTokens": 8192, "tokenField": "max_tokens" },
+  { "id": "kimi", "label": "Kimi (Moonshot)", "endpoint": "https://api.moonshot.ai/v1", "fixedEndpoint": true, "model": "kimi-k2.6", "maxTokens": 8192, "probeTokens": 8192, "tokenField": "max_tokens" },
+  { "id": "gemini", "label": "Google Gemini", "endpoint": "https://generativelanguage.googleapis.com/v1beta/openai", "fixedEndpoint": true, "model": "gemini-3.8-flash", "maxTokens": 8192, "probeTokens": 8192, "tokenField": "max_tokens" },
+  { "id": "local", "label": "로컬 모델", "endpoint": "http://127.0.0.1:11434/v1", "fixedEndpoint": false, "model": "", "maxTokens": 1024, "probeTokens": 64, "tokenField": "max_tokens" }
+]
