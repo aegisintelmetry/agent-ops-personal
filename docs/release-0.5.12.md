@@ -1,6 +1,8 @@
-# 0.5.12 Preview
+# AEGIS Agent Ops 0.5.12
 
-Unsigned Windows preview. Not a signed release or an automatic update.
+Public open-source release. The Windows installer is currently unsigned, and
+updates must be installed manually. Removing the Preview title does not change
+the published installer, its signature status, or the verification limits below.
 
 ## Changes
 
@@ -36,7 +38,9 @@ are in-memory only and do not survive an app restart.
 
 ## 한국어
 
-미서명 Windows 프리뷰입니다. 기존 0.5.11 파일을 교체하지 않고 새 버전으로 배포합니다.
+공개 오픈소스 릴리스입니다. Windows 설치 파일은 아직 미서명이며 수동으로 업데이트해야 합니다.
+제목의 Preview 표기만 제거했으며 기존 태그·파일명·설치 파일은 유지합니다.
+코드 서명 완료나 아래 검증 제한의 해소를 의미하지 않습니다.
 
 - 차단·실패한 메시지를 다음 요청에서 제외하며 수정·삭제할 수 있습니다.
 - Google 로그인 연결인데 API 키가 없어 개인 대화 전송 버튼이 비활성화되던 문제를 수정했습니다.
