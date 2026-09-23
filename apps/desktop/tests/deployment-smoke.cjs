@@ -13,7 +13,7 @@ const output = path.join(root, 'artifacts');
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
     app = await _electron.launch({
-      executablePath: process.env.BTK_DESKTOP_TEST_EXE || path.join(root, 'release/win-unpacked/AEGIS Agent Ops Preview.exe'),
+      executablePath: process.env.BTK_DESKTOP_TEST_EXE || path.join(root, 'release/win-unpacked/AEGIS Agent Ops.exe'),
       args: [`--user-data-dir=${temporary}`], env,
     });
     const page = await app.firstWindow();

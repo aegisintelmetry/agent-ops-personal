@@ -7,7 +7,7 @@ module.exports = async function clearUnconfiguredPublisher(context) {
   const file = path.join(context.appOutDir, `${context.packager.appInfo.productFilename}.exe`);
   const executable = NtExecutable.from(await fs.readFile(file));
   const resources = NtExecutableResource.from(executable);
-  // Electron's vendor is not the publisher of this unsigned product preview.
+  // Electron's vendor is not the publisher of this unsigned product.
   for (const version of Resource.VersionInfo.fromEntries(resources.entries)) {
     for (const language of version.getAllLanguagesForStringValues()) {
       version.setStringValues(language, { CompanyName: '' });

@@ -7,7 +7,7 @@ AEGIS Agent Ops Personal은 여러 모델을 연결하면서 에이전트의 권
 AEGIS의 중심은 Security FDE이며, Personal은 함께 검증하고 발전시키는 공개 프로젝트입니다.
 기업 계약이나 조직 계정 없이 Personal에 참여할 수 있습니다.
 
-**아직 초기 프리뷰입니다. 완성된 보안 제품이나 기업용 통제 체계로 소개하지 않습니다.**
+**개발 중인 오픈소스 프로젝트입니다. 완성된 보안 제품이나 기업용 통제 체계로 소개하지 않습니다.**
 작동하지 않는 조합과 미검증 흐름이 있으며 중요한 업무·민감한 자료 대신 합성 데이터로 시험해 주세요.
 
 ## 현재 제공하는 기반
@@ -43,14 +43,14 @@ Windows 사용자, 개발자, 보안 실무자 5~10명부터 피드백을 받고
 
 ## 시작하기
 
-[모집 토론에 참여하기 / Join the recruitment discussion](https://github.com/aegisintelmetry/agent-ops-public-preview/discussions/3)
+[모집 토론에 참여하기 / Join the recruitment discussion](https://github.com/aegisintelmetry/agent-ops-personal/discussions/3)
 
-- [설치·현재 지원 범위](https://github.com/aegisintelmetry/agent-ops-public-preview#readme)
-- [다운로드](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.10-preview)
-- [질문과 제안](https://github.com/aegisintelmetry/agent-ops-public-preview/discussions)
-- [버그 신고](https://github.com/aegisintelmetry/agent-ops-public-preview/issues/new/choose)
+- [설치·현재 지원 범위](https://github.com/aegisintelmetry/agent-ops-personal#readme)
+- [다운로드](https://github.com/aegisintelmetry/agent-ops-personal/releases/latest)
+- [질문과 제안](https://github.com/aegisintelmetry/agent-ops-personal/discussions)
+- [버그 신고](https://github.com/aegisintelmetry/agent-ops-personal/issues/new/choose)
 
-설치 파일은 미서명 프리뷰입니다. 새 PC 설치와 실제 Google OAuth 연결은 추가 검증 대상입니다.
+설치 파일은 미서명입니다. 새 PC 설치와 실제 Google OAuth 연결은 추가 검증 대상입니다.
 채팅은 앱 종료 후 복원되지 않으며, 모델 사용료·계정 권한은 공급자에 따릅니다.
 선택한 클라우드 모델에는 요청 내용과 적용된 메모리가 전송됩니다.
 

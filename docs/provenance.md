@@ -9,8 +9,8 @@ The project's declared copyright notice is `Copyright (c) 2026 aegisintelmetry`.
 Third-party components and community contributions retain their applicable notices.
 This statement does not claim authorship of third-party dependencies.
 
-- Official source: https://github.com/aegisintelmetry/agent-ops-public-preview
-- Official releases: https://github.com/aegisintelmetry/agent-ops-public-preview/releases
+- Official source: https://github.com/aegisintelmetry/agent-ops-personal
+- Official releases: https://github.com/aegisintelmetry/agent-ops-personal/releases
 - Contact: contact@aegistelemetry.com
 
 The publisher identifier is not a verification of a legal entity or a registered trademark.
@@ -62,7 +62,7 @@ interpret successful CI as proof that the downloadable installer was built by CI
 ## Signing and Evidence Policy
 
 The community documentation commit
-[`b378145`](https://github.com/aegisintelmetry/agent-ops-public-preview/commit/b378145a172f87e5a561d0b84575a363487f8eee)
+[`b378145`](https://github.com/aegisintelmetry/agent-ops-personal/commit/b378145a172f87e5a561d0b84575a363487f8eee)
 was created through GitHub's commit API. GitHub's verification endpoint returned
 `verified: true`, `reason: valid`. This is a GitHub-managed commit signature,
 not an independently managed publisher key, signed release tag, or Windows installer signature.

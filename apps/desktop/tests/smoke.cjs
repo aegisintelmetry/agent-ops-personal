@@ -22,7 +22,7 @@ const previewUrl = process.env.BTK_DESKTOP_PREVIEW_URL || "http://127.0.0.1:4380
       const env = { ...process.env };
       delete env.ELECTRON_RUN_AS_NODE;
       app = await playwright._electron.launch({
-        executablePath: packaged ? (process.env.BTK_DESKTOP_TEST_EXE || path.join(appRoot, 'release/win-unpacked/AEGIS Agent Ops Preview.exe')) : path.join(
+        executablePath: packaged ? (process.env.BTK_DESKTOP_TEST_EXE || path.join(appRoot, 'release/win-unpacked/AEGIS Agent Ops.exe')) : path.join(
           appRoot,
           "node_modules/electron/dist/electron.exe",
         ),

@@ -2,7 +2,7 @@
 
 ## 0.5.10 공개 기록
 
-- 공개 대상은 `aegisintelmetry/agent-ops-public-preview`의 선별 제품 이력입니다.
+- 공개 대상은 `aegisintelmetry/agent-ops-personal`의 선별 제품 이력입니다.
 - 원본 전체 이력 및 운영 하네스 저장소는 비공개로 유지합니다.
 - 초기 하네스 커밋은 이 저장소에 존재하지 않음을 GitHub API로 확인했습니다.
 - 선별 11개 커밋 비밀값 검사 탐지 0건, Windows CI 35728422763 성공을 확인했습니다.
@@ -24,7 +24,7 @@
 
 - 기존 코드의 공개 권한, 제작사 명의 확정.
 - AEGIS 이름의 사용 권리와 새 GitHub 소유 계정/조직 확정.
-- 보안 신고 주소 `contact@aegistelemetry.com`의 실제 수신 확인. 최신 0.5.x 프리뷰 지원 범위는 SECURITY.md 참조.
+- 보안 신고 주소 `contact@aegistelemetry.com`의 실제 수신 확인. 최신 0.5.x 릴리스 지원 범위는 SECURITY.md 참조.
 - 실제 배포 의존성의 라이선스/고지 포함 여부 검토.
 
 법적 명의나 공개 권한은 빌드 스크립트가 추정하지 않습니다.

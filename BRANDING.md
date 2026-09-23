@@ -1,7 +1,7 @@
 # Project Identity / 프로젝트 식별
 
 The official upstream for AEGIS Agent Ops Personal is:
-https://github.com/aegisintelmetry/agent-ops-public-preview
+https://github.com/aegisintelmetry/agent-ops-personal
 
 Forks and modifications are welcome under [Apache-2.0](LICENSE). Describe your
 changes and distinguish your distribution from the upstream project. Do not

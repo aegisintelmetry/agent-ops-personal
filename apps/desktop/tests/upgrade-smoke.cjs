@@ -70,7 +70,7 @@ function savedFiles() {
   for (const data of files.values()) assert.ok(!data.includes(Buffer.from('fixture-upgrade-key')));
   if (installUpgrade) {
     assert.equal(process.platform, 'win32');
-    assert.equal(path.resolve(previous), path.resolve(candidate), 'Installer upgrade must target the same test installation');
+    assert.equal(path.dirname(path.resolve(previous)), path.dirname(path.resolve(candidate)), 'Installer upgrade must target the same test installation directory');
     const target = path.dirname(path.resolve(candidate));
     assert.equal(target, path.resolve(process.env.BTK_DESKTOP_INSTALL_TEST_ROOT || ''), 'Explicit test installation root required');
     assert.ok(process.env.BTK_DESKTOP_UPGRADE_INSTALLER && fs.statSync(process.env.BTK_DESKTOP_UPGRADE_INSTALLER).isFile());

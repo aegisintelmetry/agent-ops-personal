@@ -1,11 +1,11 @@
 # AEGIS Agent Ops Personal
 
-[![Windows checks](https://github.com/aegisintelmetry/agent-ops-public-preview/actions/workflows/desktop-checks.yml/badge.svg)](https://github.com/aegisintelmetry/agent-ops-public-preview/actions/workflows/desktop-checks.yml)
+[![Windows checks](https://github.com/aegisintelmetry/agent-ops-personal/actions/workflows/desktop-checks.yml/badge.svg)](https://github.com/aegisintelmetry/agent-ops-personal/actions/workflows/desktop-checks.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-green.svg)](LICENSE)
 
 **내 모델로 구성하는 에이전트 팀, 직접 선택하는 메모리.**
 
-[English](README.md) | [Windows 다운로드](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.12-preview) | [보안 신고](SECURITY.md)
+[English](README.md) | [Windows 다운로드](https://github.com/aegisintelmetry/agent-ops-personal/releases/tag/v0.5.13) | [보안 신고](SECURITY.md)
 
 여러 언어 모델과 대화하고, 텍스트 작업을 에이전트 팀으로 나누고, 필요한 기억을 직접 관리하는 **AEGIS의 오픈소스 데스크톱 프로젝트**입니다.
 
@@ -13,7 +13,7 @@
 
 ![팀 대화와 마스터·작업자 트리](docs/assets/team-workspace.png)
 
-*자동 UI 시험에서 촬영한 실제 앱 화면입니다. 이름·모델 ID·응답과 한도 오류는 합성 테스트 데이터이며, 실제 공급자 응답이나 성능 측정 결과가 아닙니다.*
+*자동 UI 시험에서 촬영한 실제 앱 화면입니다. 이름·모델 ID·응답은 합성 테스트 데이터이며, 실제 공급자 응답이나 성능 측정 결과가 아닙니다.*
 
 ## 목차
 
@@ -45,13 +45,13 @@
 
 ## 설치와 시작
 
-1. [릴리스 페이지](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.12-preview)에서 `AEGIS-Agent-Ops-Setup-0.5.12-preview.exe`를 내려받습니다.
+1. [릴리스 페이지](https://github.com/aegisintelmetry/agent-ops-personal/releases/tag/v0.5.13)에서 `AEGIS-Agent-Ops-Setup-0.5.13.exe`를 내려받습니다.
 2. Windows x64에 설치하고 **Personal**을 선택합니다.
 3. 에이전트의 모델 연결을 설정한 뒤 대화하거나 팀을 구성합니다.
 
 설치본은 로컬 코어를 포함하므로 실행을 위해 Python·Node를 별도로 설치할 필요는 없습니다. Codex 연결에는 별도의 Codex CLI 또는 VS Code Codex 확장이 필요합니다.
 
-**미서명 프리뷰입니다.** 중요한 업무나 민감한 정보에 사용하기 전에 아래 제한을 확인해 주세요.
+**Windows 설치 파일은 미서명입니다.** 중요한 업무나 민감한 정보에 사용하기 전에 아래 제한을 확인해 주세요.
 
 현재 배포 대상은 Windows x64입니다. macOS·Linux 설치본은 제공하거나 검증하지 않았습니다. Personal에는 중앙 MCP 서버, 조직 등록, AEGIS 구독이 필요하지 않습니다. 사용 가능한 모델 연결은 직접 준비해야 하며 공급자 이용료는 앱에 포함되지 않습니다.
 
@@ -209,7 +209,7 @@ npm start
 powershell -NoProfile -File apps/desktop/build-windows.ps1
 ```
 
-버그 재현, 작은 범위의 개선 PR, 실제로 유용했던 작업 사례를 환영합니다. [기여 안내](CONTRIBUTING.md)와 [Windows CI](https://github.com/aegisintelmetry/agent-ops-public-preview/actions/workflows/desktop-checks.yml)를 참고하세요.
+버그 재현, 작은 범위의 개선 PR, 실제로 유용했던 작업 사례를 환영합니다. [기여 안내](CONTRIBUTING.md)와 [Windows CI](https://github.com/aegisintelmetry/agent-ops-personal/actions/workflows/desktop-checks.yml)를 참고하세요.
 
 ## 문서와 다음 단계
 
@@ -219,13 +219,13 @@ powershell -NoProfile -File apps/desktop/build-windows.ps1
 | [Google 연결](docs/personal-google-accounts.md) | Desktop OAuth 설정과 인증 정보 경계 |
 | [모듈 경계](docs/core-boundary.md) | 공개 제품과 비공개 운영의 구분 |
 | [기여 안내](CONTRIBUTING.md) | 개발과 안전한 이슈·PR 작성 |
-| [릴리스 점검](docs/public-release.md) | 프리뷰 검증과 남은 운영 확인 |
+| [릴리스 점검](docs/public-release.md) | 릴리스 검증과 남은 운영 확인 |
 | [공개 이력](docs/public-history.md) | 제품 이력을 선별한 이유 |
 | [보안 정책](SECURITY.md) | 비공개 취약점 신고 |
 
-우선 검증 대상은 새 PC 설치와 실제 공급자·계정 연결이며, 특히 Google OAuth의 실제 사용 흐름을 확인해야 합니다. 대화 영속 저장·커넥터 확장·도구 실행은 이후 검토할 수 있는 방향이지 **이번 프리뷰의 제공 기능이나 출시 일정 약속이 아닙니다.** 외부 쓰기 작업을 허용하기 전에 권한과 데이터 전달 경계를 설계해야 합니다.
+우선 검증 대상은 새 PC 설치와 실제 공급자·계정 연결이며, 특히 Google OAuth의 실제 사용 흐름을 확인해야 합니다. 대화 영속 저장·커넥터 확장·도구 실행은 이후 검토할 수 있는 방향이지 **이번 릴리스의 제공 기능이나 출시 일정 약속이 아닙니다.** 외부 쓰기 작업을 허용하기 전에 권한과 데이터 전달 경계를 설계해야 합니다.
 
-`docs/`의 이전 구현 기록은 각각의 개발 단계를 설명합니다. 현재 프리뷰의 범위는 이 README를 기준으로 하며 과거 시험 개수나 잔여 작업 목록은 현재 지원표가 아닙니다.
+`docs/`의 이전 구현 기록은 각각의 개발 단계를 설명합니다. 현재 릴리스의 범위는 이 README를 기준으로 하며 과거 시험 개수나 잔여 작업 목록은 현재 지원표가 아닙니다.
 
 ## 이력과 공개 범위
 
@@ -237,7 +237,7 @@ powershell -NoProfile -File apps/desktop/build-windows.ps1
 
 ## 보안과 라이선스
 
-**초기 테스트·개발 참여자를 모집합니다.** [참여 안내](docs/community-invitation.md)를 읽고 [Discussions](https://github.com/aegisintelmetry/agent-ops-public-preview/discussions)에서 질문과 보안·통제 설계 의견을 나눠 주세요. 계획 중인 권한·감사 기능은 현재 제공 보장이 아닙니다. [행동강령](CODE_OF_CONDUCT.md)을 지켜 주세요.
+**초기 테스트·개발 참여자를 모집합니다.** [참여 안내](docs/community-invitation.md)를 읽고 [Discussions](https://github.com/aegisintelmetry/agent-ops-personal/discussions)에서 질문과 보안·통제 설계 의견을 나눠 주세요. 계획 중인 권한·감사 기능은 현재 제공 보장이 아닙니다. [행동강령](CODE_OF_CONDUCT.md)을 지켜 주세요.
 
 취약점은 공개 이슈 대신 **contact@aegistelemetry.com**으로 비공개 신고해 주세요. 키·토큰·개인 대화를 첨부하지 마세요. [보안 정책](SECURITY.md)을 확인하세요.
 

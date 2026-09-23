@@ -8,8 +8,8 @@ AEGIS Agent Ops Personal의 유지·배포 주체는 **aegisintelmetry**입니�
 현재 저작권 고지는 `Copyright (c) 2026 aegisintelmetry`입니다.
 제3자 구성요소와 커뮤니티 기여의 고지는 각각 존중하며, 의존성 전체를 직접 만들었다고 주장하지 않습니다.
 
-- 공식 소스: https://github.com/aegisintelmetry/agent-ops-public-preview
-- 공식 배포: https://github.com/aegisintelmetry/agent-ops-public-preview/releases
+- 공식 소스: https://github.com/aegisintelmetry/agent-ops-personal
+- 공식 배포: https://github.com/aegisintelmetry/agent-ops-personal/releases
 - 연락처: contact@aegistelemetry.com
 
 이 배포자 식별자는 법인 실명 확인이나 등록 상표 증명이 아닙니다.
@@ -59,7 +59,7 @@ CI 성공만으로 내려받는 설치 파일이 CI에서 만들어졌다고 판
 ## 후속 서명과 증거 보존
 
 커뮤니티 문서 커밋
-[`b378145`](https://github.com/aegisintelmetry/agent-ops-public-preview/commit/b378145a172f87e5a561d0b84575a363487f8eee)은
+[`b378145`](https://github.com/aegisintelmetry/agent-ops-personal/commit/b378145a172f87e5a561d0b84575a363487f8eee)은
 GitHub 커밋 API로 생성했고 검증 응답에서 `verified: true`, `reason: valid`를 확인했습니다.
 이는 GitHub가 관리하는 커밋 서명이며, 배포자 자체 키·릴리스 태그·Windows 설치 파일 서명이 아닙니다.
 과거 커밋을 소급 서명하거나 법적 원저작권을 인증하지 않습니다.

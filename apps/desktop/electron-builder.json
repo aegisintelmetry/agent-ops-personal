@@ -1,6 +1,6 @@
 {
   "appId": "aegis.agentops.preview",
-  "productName": "AEGIS Agent Ops Preview",
+  "productName": "AEGIS Agent Ops",
   "copyright": "Copyright (c) 2026 aegisintelmetry",
   "asar": true,
   "afterPack": "./after-pack.cjs",
@@ -16,7 +16,7 @@
   "npmRebuild": false,
   "win": {
     "target": [{ "target": "nsis", "arch": ["x64"] }],
-    "artifactName": "AEGIS-Agent-Ops-Setup-${version}-preview.${ext}",
+    "artifactName": "AEGIS-Agent-Ops-Setup-${version}.${ext}",
     "requestedExecutionLevel": "asInvoker",
     "signExecutable": false
   },

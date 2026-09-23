@@ -1,4 +1,4 @@
-# AEGIS Agent Ops Desktop Preview
+# AEGIS Agent Ops Desktop
 
 Windows-first desktop client over the independent `agent_ops` product core. Version 0.5.9 includes
 the Agent Ops workspace layout, centered composer and independent in-memory chat
@@ -15,12 +15,12 @@ It retains 0.4.2's immediate, redacted CLI policy errors instead of silent bridg
 timeouts, and distinguishes central-server input from the returned MCP endpoint.
 It retains 0.4.1's central deployment reporting and bounded service verification.
 It remains an
-unsigned local preview; a clean-PC installation against the real central server
+unsigned desktop build; a clean-PC installation against the real central server
 has not yet been validated.
 
-## Personal Preview
+## Personal
 
-The source preview now starts with a Personal / Enterprise selector. Personal
+The app starts with a Personal / Enterprise selector. Personal
 does not query the central profile registry or start the Python enterprise bridge.
 Enterprise keeps the existing enrollment and runner workflow. A mode switch is a
 local UI preference, not enterprise authentication or a permission grant.
@@ -141,7 +141,7 @@ Build from `apps/desktop` after `npm ci`:
 powershell -NoProfile -File .\build-windows.ps1
 ```
 
-Output: `release/AEGIS-Agent-Ops-Setup-0.5.9-preview.exe` (Windows x64, NSIS).
+Output: `release/AEGIS-Agent-Ops-Setup-0.5.13.exe` (Windows x64, NSIS).
 
 The language selector on the edition screen and app toolbar supports Korean and
 English. The desktop main process owns `userData/ui-preferences.json`; renderer
@@ -155,11 +155,11 @@ Packages include `resources/LICENSE`, `resources/NOTICE`, and the existing
 and history review described in `docs/public-release.md` at the repository root.
 The build uses an isolated `.build-venv`; it does not modify the operational
 Python environment. `-Unpacked` builds only the unpacked application.
-Use `-OutputDirectory release-preview` while another unpacked preview is running.
+Use `-OutputDirectory release-preview` while another unpacked build is running.
 Smoke tests accept its executable path through `BTK_DESKTOP_TEST_EXE`.
 
 - Per-user installation, no elevation or automatic launch after setup. The
-  installer is unsigned; it is a local preview, not a trusted publisher release.
+  installer is unsigned; its publisher identity has not been verified by a code-signing certificate.
 - Electron UI and a frozen Python core are bundled. Installed launch does not
   require Node or Python on PATH, or a development checkout to boot.
 - Existing CLI profiles and workspaces are read in place. No profiles, tokens,
@@ -334,7 +334,7 @@ provider requests. They do not require a separate repository or browser download
   Only the read-only context supplied by the app is available. CLI authentication
   stays local. Auth failures are surfaced, not interpreted as successful replies.
 - Other engines, including Codex, fail closed until their desktop permission
-  adapters are implemented and tested. This preview does not change the master
+  adapters are implemented and tested. This release does not change the master
   runner's model. It is not a remote MASTER conversation.
 - Completed responses are redacted before publication; generation status is live.
   Chat stays in window memory, with no new persistent session authority.
@@ -388,6 +388,6 @@ The shared-core product direction references [Hermes Desktop](https://hermes-age
 Real central enrollment + clean Windows install/uninstall validation, signed
 installer/update delivery, existing-PC migration, shared durable chat sessions,
 additional desktop chat adapters, governed action/approval UI and SSE/A2A console
-integration remain release gates. Building/testing this preview does not deploy
+integration remain release gates. Building/testing this release does not deploy
 to the fleet or register startup on the developer's PC. Central API/schema and
 production prompts remain unchanged.

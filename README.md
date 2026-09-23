@@ -1,11 +1,11 @@
 # AEGIS Agent Ops Personal
 
-[![Windows checks](https://github.com/aegisintelmetry/agent-ops-public-preview/actions/workflows/desktop-checks.yml/badge.svg)](https://github.com/aegisintelmetry/agent-ops-public-preview/actions/workflows/desktop-checks.yml)
+[![Windows checks](https://github.com/aegisintelmetry/agent-ops-personal/actions/workflows/desktop-checks.yml/badge.svg)](https://github.com/aegisintelmetry/agent-ops-personal/actions/workflows/desktop-checks.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-green.svg)](LICENSE)
 
 **Your models. A visible agent team. Memory you choose.**
 
-[한국어](README.ko.md) | [Windows download](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.12-preview) | [Security](SECURITY.md)
+[한국어](README.ko.md) | [Windows download](https://github.com/aegisintelmetry/agent-ops-personal/releases/tag/v0.5.13) | [Security](SECURITY.md)
 
 An open-source desktop project by **AEGIS** for working with multiple language models, coordinating text-based agent teams, and keeping explicit local memory.
 
@@ -13,7 +13,7 @@ An open-source desktop project by **AEGIS** for working with multiple language m
 
 ![Team conversation and coordinator/worker tree](docs/assets/team-workspace.png)
 
-*Actual desktop UI captured by an automated test. Names, model IDs, responses, and the quota failure are synthetic fixtures, not live provider results or a performance benchmark.*
+*Actual desktop UI captured by an automated test. Names, model IDs, and responses are synthetic fixtures, not live provider results or a performance benchmark.*
 
 ## Contents
 
@@ -46,7 +46,7 @@ For example, one worker can analyze a proposal while another critiques its assum
 
 ## Install
 
-Download `AEGIS-Agent-Ops-Setup-0.5.12-preview.exe` from the [release page](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.12-preview).
+Download `AEGIS-Agent-Ops-Setup-0.5.13.exe` from the [release page](https://github.com/aegisintelmetry/agent-ops-personal/releases/tag/v0.5.13).
 
 1. Install on Windows x64 and open the app.
 2. Choose **Personal**. No AEGIS organization account or central server is required.
@@ -54,7 +54,7 @@ Download `AEGIS-Agent-Ops-Setup-0.5.12-preview.exe` from the [release page](http
 
 The installer bundles the local core; a separate Python or Node installation is not required to run it. The Codex connection requires a separately installed Codex CLI or VS Code Codex extension.
 
-**This is an unsigned preview**, not a production-ready release.
+**The Windows installer is unsigned.** Review the limitations below before using it for important work or sensitive data.
 
 Windows x64 is the distributed platform. macOS/Linux installers are not provided or validated in this release. Personal does not require a central MCP server, organization enrollment, or an AEGIS subscription. Bring your own eligible provider connection; model usage is not included with the app.
 
@@ -212,7 +212,7 @@ Build an installer from the repository root:
 powershell -NoProfile -File apps/desktop/build-windows.ps1
 ```
 
-See [contributing](CONTRIBUTING.md) and [Windows CI](https://github.com/aegisintelmetry/agent-ops-public-preview/actions/workflows/desktop-checks.yml).
+See [contributing](CONTRIBUTING.md) and [Windows CI](https://github.com/aegisintelmetry/agent-ops-personal/actions/workflows/desktop-checks.yml).
 
 ## Documentation and Next Steps
 
@@ -222,13 +222,13 @@ See [contributing](CONTRIBUTING.md) and [Windows CI](https://github.com/aegisint
 | [Google connections](docs/personal-google-accounts.md) | Desktop OAuth setup and credential boundaries |
 | [Module boundaries](docs/core-boundary.md) | Public product versus private operations |
 | [Contributing](CONTRIBUTING.md) | Development and safe issue/PR preparation |
-| [Release checks](docs/public-release.md) | Preview verification and outstanding operational checks |
+| [Release checks](docs/public-release.md) | Release verification and outstanding operational checks |
 | [Public history](docs/public-history.md) | Why this repository contains selected product history |
 | [Security policy](SECURITY.md) | Private vulnerability reporting |
 
-Near-term validation priorities are fresh-PC installation and real provider/account flows, particularly Google OAuth. Conversation persistence, broader connectors, and tool execution are possible future work, **not features included in this preview or promised release dates**. Permission and data-flow boundaries must be designed before enabling external writes.
+Near-term validation priorities are fresh-PC installation and real provider/account flows, particularly Google OAuth. Conversation persistence, broader connectors, and tool execution are possible future work, **not features included in this release or promised release dates**. Permission and data-flow boundaries must be designed before enabling external writes.
 
-Older implementation notes in `docs/` describe individual development stages. This README describes the current preview; historical test counts and pending items are not a current support matrix.
+Older implementation notes in `docs/` describe individual development stages. This README describes the current release; historical test counts and pending items are not a current support matrix.
 
 ## History and Scope
 
@@ -240,7 +240,7 @@ The source includes `apps/desktop`, the `agent_ops` client/core, and tests. Priv
 
 ## Feedback and Security
 
-**Early testers and contributors welcome:** read our [community invitation](docs/community-invitation.md) and join [Discussions](https://github.com/aegisintelmetry/agent-ops-public-preview/discussions). We are exploring security and control features openly; planned permissions and audit capabilities are not shipped guarantees. Please follow the [code of conduct](CODE_OF_CONDUCT.md).
+**Early testers and contributors welcome:** read our [community invitation](docs/community-invitation.md) and join [Discussions](https://github.com/aegisintelmetry/agent-ops-personal/discussions). We are exploring security and control features openly; planned permissions and audit capabilities are not shipped guarantees. Please follow the [code of conduct](CODE_OF_CONDUCT.md).
 
 Bug reports, focused pull requests, and useful real-world workflows are welcome. Include the app version, Windows version, and reproduction steps without credentials or private conversations.
 

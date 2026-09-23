@@ -45,7 +45,7 @@ jobs:
         env:
           DEBUG: pw:browser
         run: |
-          $env:BTK_DESKTOP_TEST_EXE = Join-Path (Get-Location) 'release/win-unpacked/AEGIS Agent Ops Preview.exe'
+          $env:BTK_DESKTOP_TEST_EXE = Join-Path (Get-Location) 'release/win-unpacked/AEGIS Agent Ops.exe'
           node tests/package-smoke.cjs --fresh-only
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/edition-boundary-smoke.cjs
@@ -65,6 +65,8 @@ jobs:
           node tests/google-ui-smoke.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/transmission-ui-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/public-screenshots.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $env:BTK_DESKTOP_PREVIOUS_EXE = $env:BTK_DESKTOP_TEST_EXE
           node tests/upgrade-smoke.cjs

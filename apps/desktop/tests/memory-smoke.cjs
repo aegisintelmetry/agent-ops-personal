@@ -25,12 +25,12 @@ function sample(pid) {
 }
 function summarize(rows) {
   return { processes: rows.length, private_mib: +(rows.reduce((n, p) => n + p.private_bytes, 0) / 1048576).toFixed(1),
-    app_private_mib: +(rows.filter(p => ['AEGIS Agent Ops Preview', 'btk-desktop-core'].includes(p.name)).reduce((n, p) => n + p.private_bytes, 0) / 1048576).toFixed(1),
+    app_private_mib: +(rows.filter(p => ['AEGIS Agent Ops', 'btk-desktop-core'].includes(p.name)).reduce((n, p) => n + p.private_bytes, 0) / 1048576).toFixed(1),
     working_set_sum_mib: +(rows.reduce((n, p) => n + p.working_set_bytes, 0) / 1048576).toFixed(1), rows };
 }
 
 (async () => {
-  const exe = process.env.BTK_DESKTOP_TEST_EXE || path.join(root, 'release/win-unpacked/AEGIS Agent Ops Preview.exe');
+  const exe = process.env.BTK_DESKTOP_TEST_EXE || path.join(root, 'release/win-unpacked/AEGIS Agent Ops.exe');
   const host = fs.readFileSync(path.join(path.dirname(exe), 'resources/core/btk-agent-runtime.exe'));
   const subsystem = host.readUInt16LE(host.readUInt32LE(0x3c) + 24 + 68);
   assert.equal(subsystem, 2, 'runtime must use Windows GUI subsystem, not a console subsystem');

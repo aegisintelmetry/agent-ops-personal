@@ -6,7 +6,7 @@ const { _electron } = require(process.env.PLAYWRIGHT_PATH || 'playwright');
 const root = path.resolve(__dirname, '..');
 const output = path.join(root, 'artifacts');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'btk-packaged-smoke-'));
-const executable = process.env.BTK_DESKTOP_TEST_EXE || path.join(root, 'release/win-unpacked/AEGIS Agent Ops Preview.exe');
+const executable = process.env.BTK_DESKTOP_TEST_EXE || path.join(root, 'release/win-unpacked/AEGIS Agent Ops.exe');
 fs.mkdirSync(output, { recursive: true });
 
 async function check(fresh) {

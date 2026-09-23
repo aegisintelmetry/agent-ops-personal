@@ -11,6 +11,6 @@ the current product source tree.
 Third-party components retain their respective licenses and notices.
 Windows distributions include resources/THIRD-PARTY-NOTICES.txt.
 
-Official upstream: https://github.com/aegisintelmetry/agent-ops-public-preview
+Official upstream: https://github.com/aegisintelmetry/agent-ops-personal
 source-import.json is a historical extraction inventory, not a current release
 manifest or signature. See docs/provenance.md for verification and limitations.
