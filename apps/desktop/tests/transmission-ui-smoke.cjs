@@ -32,7 +32,11 @@ let app, server, calls = 0;
     await page.waitForFunction(width => innerWidth <= width, width);
     await page.waitForTimeout(150);
     const navigation = page.locator('.personal-nav-scrim');
-    if (await navigation.isVisible()) await navigation.click();
+    if (width <= 900) {
+      await page.getByLabel(label, { exact: true }).waitFor();
+      await page.keyboard.press('Escape');
+      await navigation.waitFor({ state: 'hidden' });
+    }
     await page.getByLabel(label, { exact: true }).fill('sk-' + 'fixture'.repeat(5));
     await page.getByRole('button', { name: button, exact: true }).click();
     await page.getByRole('alert').filter({ hasText: expected }).waitFor();
