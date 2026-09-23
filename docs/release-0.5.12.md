@@ -20,7 +20,9 @@ Unsigned Windows preview. Not a signed release or an automatic update.
 - On one Windows development PC: actual 0.5.11 installation, NSIS upgrade to
   0.5.12, application startup, uninstall, and 0.5.12 reinstallation succeeded.
 - Test-profile models, encrypted key, team, role, memory and language survived the
-  upgrade. Existing saved user data hashes were unchanged after upgrade/uninstall.
+  upgrade. A marker in the default user-data directory survived uninstall and
+  reinstall unchanged, then was removed. No pre-existing saved model settings
+  were present in that default profile; this is fixture-based retention evidence.
 - Uninstall removed the test executable, shortcuts and uninstall registration.
 - Model requests used local fixtures. This is not real-provider or clean-PC evidence.
 
@@ -39,6 +41,7 @@ are in-memory only and do not survive an app restart.
 - 차단·실패한 메시지를 다음 요청에서 제외하며 수정·삭제할 수 있습니다.
 - Google 로그인 연결인데 API 키가 없어 개인 대화 전송 버튼이 비활성화되던 문제를 수정했습니다.
 - 이 개발 PC에서 실제 설치·0.5.11에서 업데이트·제거·재설치를 확인했습니다.
-- 설정·암호화 키·메모리 보존, 바로가기·설치 등록 제거를 확인했습니다.
+- 시험 프로필의 설정·암호화 키·메모리 보존, 바로가기·설치 등록 제거를 확인했습니다.
+- 기본 데이터 폴더의 시험 파일도 제거·재설치 후 유지됐습니다. 기본 프로필에는 기존 모델 설정이 없어 실제 사용자 설정 보존 증거로 해석하지 않습니다.
 - Node 121개, Python 108개, 네이티브 UI 9종 및 패키지 10종 검사를 통과했습니다.
 - 새 PC 실설치와 실제 공급자 로그인은 별도 확인이 필요합니다.
