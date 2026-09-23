@@ -192,6 +192,7 @@ class CodexConnection {
     });
   }
   async complete(messages, model) {
+    messages = require('./transmission-policy.cjs').prepareMessages(messages, { ErrorType: PersonalError });
     if (this.active || this.loginId) throw new PersonalError("진행 중인 요청을 먼저 완료해 주세요.");
     if (!Array.isArray(messages) || !messages.length || messages.length > 24 || messages.some(row => !row || !["user", "assistant"].includes(row.role) || typeof row.content !== "string" || !row.content.trim()) || JSON.stringify(messages).length > 100000) throw new PersonalError("대화 입력이 올바르지 않습니다.");
     if (typeof model !== "string" || !model || model.length > 200) throw new PersonalError("Codex 모델을 선택해 주세요.");

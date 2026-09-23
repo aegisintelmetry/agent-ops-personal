@@ -32,6 +32,43 @@ function setup(t, overrides = {}) {
 }
 const response = (text = "fixture answer", extra = {}) => new Response(JSON.stringify({ choices: [{ message: { content: text }, finish_reason: "stop" }], usage: { prompt_tokens: 7, completion_tokens: 2, total_tokens: 9 }, ...extra }));
 
+test('transmission redline prevents API calls, including probes and stored-key echoes', async t => {
+  let calls = 0;
+  const { service } = setup(t, { fetchImpl: async () => { calls++; return response(); } });
+  service.setMode('personal'); service.save({ ...model, apiKey: fixtureKey });
+  for (const content of [fixtureKey, 'sk-' + 'fixture'.repeat(5)]) {
+    await assert.rejects(service.complete([{ role: 'user', content }], { probe: true }), { code: 'transmission_blocked' });
+    assert.equal(service.active, null);
+  }
+  assert.equal(calls, 0);
+  await service.complete([{ role: 'user', content: 'safe request' }]);
+  assert.equal(calls, 1);
+});
+
+for (const phase of ['planning', 'working', 'synthesizing']) test(`team ${phase} and retries use the adapter redline`, async t => {
+  const { TeamCoordinator } = require('../electron/team.cjs');
+  const blocked = 'sk-' + 'fixture'.repeat(5);
+  let calls = 0;
+  const { service } = setup(t, { fetchImpl: async (_url, options) => {
+    calls++;
+    const content = JSON.parse(options.body).messages[0].content;
+    if (content.startsWith('Plan')) return response(JSON.stringify({ tasks: [{ agentId: 'w', task: phase === 'working' ? blocked : 'Review' }] }));
+    return response(blocked);
+  } });
+  service.setMode('personal'); service.save({ ...model, apiKey: fixtureKey });
+  const team = new TeamCoordinator({ open: () => ({ model: model.model, complete: messages => service.complete(messages), cancel: () => service.cancel(), close() {} }) });
+  const args = { masterId: 'm', workerIds: ['w'], objective: phase === 'planning' ? blocked : 'Review text' };
+  const roster = [{ id: 'm', name: 'Master' }, { id: 'w', name: 'Worker' }];
+  team.start(args, roster); await team.done;
+  const run = team.state();
+  assert.equal(run.status, phase === 'working' ? 'partial' : 'failed');
+  assert.match(run.error || run.workers[0].error, /보안 정책/);
+  assert.equal(calls, { planning: 0, working: 1, synthesizing: 2 }[phase]);
+  const previous = calls;
+  team.start({ ...args, retryOf: run.id }, roster); await team.done;
+  assert.equal(calls, previous);
+});
+
 test("fresh personal setup does not access central state or start networking", t => {
   const { service } = setup(t, { fetchImpl: () => assert.fail("unexpected network") });
   assert.equal(service.state().mode, null);

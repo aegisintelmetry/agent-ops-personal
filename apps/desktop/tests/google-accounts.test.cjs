@@ -7,6 +7,31 @@ const { OAuth2Client } = require('google-auth-library');
 const { GoogleAccounts, clientConfig } = require('../electron/google-accounts.cjs');
 const { AgentProfiles } = require('../electron/agents.cjs');
 const imported = { installed: { client_id: 'fixture.apps.googleusercontent.com', client_secret: 'fixture-client-secret', project_id: 'fixture-project' } };
+
+test('Google redline blocks direct calls before credential refresh', async () => {
+  let calls = 0;
+  const store = Object.create(GoogleAccounts.prototype);
+  store.credential = async () => { calls++; throw new Error('unexpected refresh'); };
+  store.fetch = async () => { calls++; throw new Error('unexpected fetch'); };
+  await assert.rejects(store.complete([{ role: 'user', content: 'sk-' + 'fixture'.repeat(5) }], {}, new AbortController().signal), { code: 'transmission_blocked' });
+  assert.equal(calls, 0);
+});
+
+test('Google freezes messages across credential refresh and blocks token echoes', async () => {
+  const store = Object.create(GoogleAccounts.prototype);
+  const messages = [{ role: 'user', content: 'safe' }];
+  const config = { accountId: 'fixture', model: 'gemini-fixture', maxTokens: 128 };
+  let calls = 0;
+  store.credential = async () => { messages[0].content = 'sk-' + 'fixture'.repeat(5); config.model = 'changed'; return { token: 'fixture-token', project: 'fixture-project' }; };
+  store.fetch = async (url, options) => {
+    calls++; assert.ok(url.includes('gemini-fixture'));
+    assert.equal(JSON.parse(options.body).contents[0].parts[0].text, 'safe');
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'safe response' }] }, finishReason: 'STOP' }] }));
+  };
+  await store.complete(messages, config, new AbortController().signal);
+  await assert.rejects(store.complete([{ role: 'user', content: 'fixture-token' }], config, new AbortController().signal), { code: 'transmission_blocked' });
+  assert.equal(calls, 1);
+});
 function fixture(t, extra = {}) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-google-'));
   const safeStorage = { isEncryptionAvailable: () => true, encryptString: value => Buffer.from(value.split('').reverse().join('')), decryptString: value => value.toString().split('').reverse().join('') };

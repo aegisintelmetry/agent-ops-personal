@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const providers = require("./providers.json");
+const { prepareMessages } = require('./transmission-policy.cjs');
 
 class PersonalError extends Error {}
 const fail = message => { throw new PersonalError(message); };
@@ -146,6 +147,7 @@ class PersonalService {
       catch { fail("저장된 키를 복호화할 수 없습니다. 키를 다시 등록해 주세요."); }
     }
     if (!google && !key && config.provider !== "local") fail("API 키를 먼저 등록해 주세요.");
+    messages = prepareMessages(messages, { secrets: [key], ErrorType: PersonalError });
     const controller = new AbortController();
     this.active = controller;
     let timedOut = false;

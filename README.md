@@ -5,7 +5,7 @@
 
 **Your models. A visible agent team. Memory you choose.**
 
-[한국어](README.ko.md) | [Windows download](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.10-preview) | [Security](SECURITY.md)
+[한국어](README.ko.md) | [Windows download](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.11-preview) | [Security](SECURITY.md)
 
 An open-source desktop project by **AEGIS** for working with multiple language models, coordinating text-based agent teams, and keeping explicit local memory.
 
@@ -46,7 +46,7 @@ For example, one worker can analyze a proposal while another critiques its assum
 
 ## Install
 
-Download `AEGIS-Agent-Ops-Setup-0.5.10-preview.exe` from the [release page](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.10-preview).
+Download `AEGIS-Agent-Ops-Setup-0.5.11-preview.exe` from the [release page](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.11-preview).
 
 1. Install on Windows x64 and open the app.
 2. Choose **Personal**. No AEGIS organization account or central server is required.

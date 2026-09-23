@@ -1,6 +1,7 @@
 const { randomUUID } = require('node:crypto');
 const { PersonalError } = require('./personal.cjs');
 function safeFailure(error, phase) {
+  if (error?.code === 'transmission_blocked') return require('./transmission-policy.cjs').BLOCKED_MESSAGE;
   const message = String(error?.message || '');
   if (/429|rate.?limit|quota|잔액|한도/i.test(message)) return '요청 한도 또는 잔액을 확인해 주세요.';
   if (/401|403|auth|로그인|인증/i.test(message)) return '모델 인증 또는 접근 권한을 확인해 주세요.';

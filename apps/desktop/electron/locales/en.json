@@ -1,4 +1,5 @@
 {
+  "보안 정책으로 전송을 차단했습니다. 인증 정보로 의심되는 내용을 제거한 뒤 다시 요청해 주세요.": "Transmission blocked by security policy. Remove suspected credentials and try again.",
   "Gemini 로그인 연결": "Gemini sign-in connection",
   "Google Cloud API · 프로젝트 사용량 과금": "Google Cloud API · project usage billing",
   "연결 계정": "Connection account",

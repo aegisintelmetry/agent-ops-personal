@@ -56,6 +56,13 @@ test("Codex startup is lazy, isolates home and strips inherited credentials", as
   assert.equal(lockedConfig["features.shell_tool"], false);
   assert.equal(lockedConfig.sandbox_mode, "read-only");
 });
+
+test('Codex redline blocks before authentication or process startup', async t => {
+  const f = fixture(t);
+  await assert.rejects(f.service.complete([{ role: 'user', content: 'sk-' + 'fixture'.repeat(5) }], 'fixture-model'), { code: 'transmission_blocked' });
+  assert.equal(f.calls.length, 0);
+  assert.equal(f.service.active, null);
+});
 test("Codex login opens only an official HTTPS URL and supports cancel", async t => {
   const f = fixture(t); await f.service.login();
   assert.equal(f.opened.length, 1); assert.equal((await f.service.state()).pending, true);

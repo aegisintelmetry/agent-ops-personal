@@ -139,7 +139,11 @@ class GoogleAccounts {
     catch { fail('Google 인증 갱신에 실패했습니다. 다시 로그인해 주세요.'); }
   }
   async complete(messages, config, signal, probe) {
+    const { prepareMessages } = require('./transmission-policy.cjs');
+    messages = prepareMessages(messages, { ErrorType: PersonalError });
+    config = { ...config };
     const { token, project } = await this.credential(config.accountId);
+    messages = prepareMessages(messages, { secrets: [token], ErrorType: PersonalError });
     signal.throwIfAborted();
     const response = await this.fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.model)}:generateContent`, {
       method: 'POST', redirect: 'error', signal,
