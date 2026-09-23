@@ -2,6 +2,38 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const model = import("../src/sessions.mjs");
 
+test('failed requests never poison subsequent conversation input', async () => {
+  const { conversationInput } = await model;
+  const messages = [{ role: 'user', content: 'original' }, { role: 'assistant', content: 'answer', state: 'completed' },
+    { role: 'user', content: 'blocked', state: 'failed' }, { role: 'user', content: 'in flight', state: 'pending' },
+    { role: 'assistant', content: 'unfinished', state: 'partial' }];
+  assert.deepEqual(conversationInput(messages, 'clean'), [{ role: 'user', content: 'original' },
+    { role: 'assistant', content: 'answer' }, { role: 'user', content: 'clean' }]);
+  assert.equal(messages.length, 5);
+  assert.equal(conversationInput(Array.from({ length: 30 }, () => messages[0]), 'next').length, 23);
+});
+
+test('failed-message recovery preserves unrelated sessions and unsent drafts', async () => {
+  const { initialSessions, sessionReducer: reduce } = await model;
+  let state = reduce(initialSessions('one'), { type: 'messages', id: 'one', value: [
+    { id: 'bad', role: 'user', content: 'revise me', state: 'failed' },
+    { id: 'good', role: 'user', content: 'keep me', state: 'completed' }] });
+  state = reduce(state, { type: 'create', id: 'two' });
+  const recover = { type: 'recover', id: 'one', messageId: 'bad', mode: 'edit' };
+  state = reduce(state, { type: 'draft', id: 'one', value: 'unsent' });
+  assert.deepEqual(reduce(state, recover), state);
+  assert.deepEqual(reduce(state, { ...recover, messageId: 'good', mode: 'remove' }), state);
+  state = reduce(state, { type: 'draft', id: 'one', value: '' });
+  const edited = reduce(state, recover);
+  assert.equal(edited.items[1].draft, 'revise me');
+  assert.equal(edited.items[1].title, 'keep me');
+  assert.equal(edited.selected, 'two');
+  assert.deepEqual(edited.items[0], state.items[0]);
+  const removed = reduce(state, { ...recover, mode: 'remove' });
+  assert.equal(removed.items[1].draft, '');
+  assert.equal(removed.items[1].messages.length, 1);
+});
+
 test("sessions keep independent messages and drafts when switching", async () => {
   const { initialSessions, sessionReducer: reduce } = await model;
   let state = initialSessions("one");

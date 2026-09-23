@@ -9,9 +9,18 @@ const packaged = process.env.BTK_DESKTOP_TEST_EXE;
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-transmission-'));
 const artifacts = path.join(root, 'artifacts');
 let app, server, calls = 0;
+const payloads = [];
 (async () => {
   fs.mkdirSync(artifacts, { recursive: true });
-  server = http.createServer((_req, res) => { calls++; res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ choices: [{ message: { content: 'Fixture response' }, finish_reason: 'stop' }] })); });
+  server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      calls++; payloads.push(JSON.parse(body));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ choices: [{ message: { content: 'Fixture response' }, finish_reason: 'stop' }] }));
+    });
+  });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const endpoint = `http://127.0.0.1:${server.address().port}/v1`;
   const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
@@ -26,6 +35,7 @@ let app, server, calls = 0;
     ['ko', 1440, '개인 메시지', '개인 메시지 전송', '보안 정책으로 전송을 차단했습니다.'],
     ['en', 390, 'Personal message', 'Send personal message', 'Transmission blocked by security policy.'],
   ]) {
+    const before = calls;
     await page.evaluate(language => window.btk.preferences.save(language), language);
     await page.reload();
     await app.evaluate(({ BrowserWindow }, width) => { const win = BrowserWindow.getAllWindows()[0]; win.setMinimumSize(0, 0); win.setSize(width, 900); }, width);
@@ -40,13 +50,42 @@ let app, server, calls = 0;
     await page.getByLabel(label, { exact: true }).fill('sk-' + 'fixture'.repeat(5));
     await page.getByRole('button', { name: button, exact: true }).click();
     await page.getByRole('alert').filter({ hasText: expected }).waitFor();
-    assert.equal(calls, 0);
+    assert.equal(calls, before);
+    const edit = language === 'ko' ? '실패한 메시지 수정' : 'Edit failed message';
+    const remove = language === 'ko' ? '실패한 메시지 삭제' : 'Delete failed message';
+    const composer = page.getByLabel(label, { exact: true });
+    await page.getByRole('button', { name: edit, exact: true }).waitFor();
+    const editBounds = await page.getByRole('button', { name: edit, exact: true }).boundingBox();
+    const removeBounds = await page.getByRole('button', { name: remove, exact: true }).boundingBox();
+    assert.equal(editBounds.y, removeBounds.y, 'Recovery controls stay on the same row');
+    await page.screenshot({ path: path.join(artifacts, `transmission-blocked-${language}-${width}.png`) });
+    await composer.fill('Clean follow-up');
+    assert.equal(await page.getByRole('button', { name: edit, exact: true }).isEnabled(), false);
+    await page.getByRole('button', { name: button, exact: true }).click();
+    await page.locator('.personal-message.assistant').waitFor();
+    assert.equal(calls, before + 1);
+    assert.deepEqual(payloads.at(-1).messages, [{ role: 'user', content: 'Clean follow-up' }]);
+    await page.getByRole('button', { name: remove, exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: edit, exact: true }).count(), 0);
+    await composer.fill('sk-' + 'fixture'.repeat(5));
+    await page.getByRole('button', { name: button, exact: true }).click();
+    await page.getByRole('alert').filter({ hasText: expected }).waitFor();
+    assert.equal(calls, before + 1);
+    await page.getByRole('button', { name: edit, exact: true }).click();
+    assert.equal(await composer.inputValue(), 'sk-' + 'fixture'.repeat(5));
+    await composer.fill('Corrected request');
+    await page.getByRole('button', { name: button, exact: true }).click();
+    await page.waitForFunction(() => document.querySelectorAll('.personal-message.assistant').length === 2);
+    assert.equal(calls, before + 2);
+    assert.deepEqual(payloads.at(-1).messages, [{ role: 'user', content: 'Clean follow-up' },
+      { role: 'assistant', content: 'Fixture response' }, { role: 'user', content: 'Corrected request' }]);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await page.screenshot({ path: path.join(artifacts, `transmission-${language}-${width}.png`) });
   }
-  console.log(JSON.stringify({ status: 'passed', packaged: Boolean(packaged), blockedRequests: 2, modelRequests: calls, languages: ['ko', 'en'] }));
+  console.log(JSON.stringify({ status: 'passed', packaged: Boolean(packaged), blockedRequests: 4, blockedModelRequests: 0, cleanFixtureRequests: calls, recovery: ['exclude', 'edit', 'delete'], languages: ['ko', 'en'] }));
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
   await app?.close();
   server?.closeAllConnections();
   if (server?.listening) await new Promise(resolve => server.close(resolve));
+  fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });
 });

@@ -5,7 +5,7 @@
 
 **내 모델로 구성하는 에이전트 팀, 직접 선택하는 메모리.**
 
-[English](README.md) | [Windows 다운로드](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.11-preview) | [보안 신고](SECURITY.md)
+[English](README.md) | [Windows 다운로드](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.12-preview) | [보안 신고](SECURITY.md)
 
 여러 언어 모델과 대화하고, 텍스트 작업을 에이전트 팀으로 나누고, 필요한 기억을 직접 관리하는 **AEGIS의 오픈소스 데스크톱 프로젝트**입니다.
 
@@ -45,7 +45,7 @@
 
 ## 설치와 시작
 
-1. [릴리스 페이지](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.11-preview)에서 `AEGIS-Agent-Ops-Setup-0.5.11-preview.exe`를 내려받습니다.
+1. [릴리스 페이지](https://github.com/aegisintelmetry/agent-ops-public-preview/releases/tag/v0.5.12-preview)에서 `AEGIS-Agent-Ops-Setup-0.5.12-preview.exe`를 내려받습니다.
 2. Windows x64에 설치하고 **Personal**을 선택합니다.
 3. 에이전트의 모델 연결을 설정한 뒤 대화하거나 팀을 구성합니다.
 

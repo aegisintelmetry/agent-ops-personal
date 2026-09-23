@@ -71,6 +71,13 @@ async function launch() {
   const calls = await app.evaluate(() => global.googleFixtureCalls);
   assert.deepEqual(calls.map(c => c.model), ['gemini-master-fixture', 'gemini-worker-fixture', 'gemini-master-fixture']);
   assert.ok(calls.every(c => c.accountId === accountId));
+  await page.getByRole('button', { name: '작업 공간', exact: true }).click();
+  await page.getByLabel('개인 메시지', { exact: true }).fill('Fixture personal chat');
+  assert.equal(await page.getByRole('button', { name: '개인 메시지 전송', exact: true }).isEnabled(), true, 'A connected Google account must enable personal chat without an API key');
+  await page.getByRole('button', { name: '개인 메시지 전송', exact: true }).click();
+  await page.locator('.personal-message.assistant').filter({ hasText: 'Fixture result' }).waitFor();
+  assert.equal((await app.evaluate(() => global.googleFixtureCalls)).length, 4);
+  await page.getByRole('button', { name: '모델 연결', exact: true }).click();
   fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
   for (const width of [1440, 390]) {
     await app.evaluate(({ BrowserWindow }, width) => { const w = BrowserWindow.getAllWindows()[0]; w.setMinimumSize(0, 0); w.setSize(width, 900); }, width);
@@ -88,6 +95,9 @@ async function launch() {
   await page.getByRole('button', { name: 'Remove connection account', exact: true }).click();
   await page.waitForFunction(async () => !(await window.btk.personal.state()).accountConfigured);
   assert.ok((await page.evaluate(async () => window.btk.personal.team.configuration())).agents.every(a => !a.configured));
+  await page.getByRole('button', { name: 'Workspace', exact: true }).click();
+  await page.getByLabel('Personal message', { exact: true }).fill('Disconnected account');
+  assert.equal(await page.getByRole('button', { name: 'Send personal message', exact: true }).isEnabled(), false);
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ status: 'passed', import: true, mockBrowserLogin: true, sharedMasterWorkerAccount: true, independentModels: true, restart: true, removal: true, widths: [1440, 390], actualProviderRequests: false }));
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await app?.close(); fs.rmSync(directory, { recursive: true, force: true }); });

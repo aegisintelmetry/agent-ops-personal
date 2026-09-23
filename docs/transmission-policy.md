@@ -30,9 +30,11 @@ network traffic. OAuth login, token refresh, and Slack traffic are separate from
 this model-message boundary. Google token comparison occurs after authentication
 refresh, before model inference.
 
-Blocked input can remain visible in the local conversation. A later request that
-includes it in history will also be blocked; start a new conversation without the
-sensitive content. Do not include private conversations or screenshots containing
+In 0.5.12, failed user messages remain visible but are excluded from
+subsequent requests. They can be deleted or moved back to the composer for editing;
+editing does not send automatically or overwrite an existing draft. Timeout and
+cancellation failures do not prove the provider received nothing. In 0.5.11,
+start a new conversation to exclude blocked history. Do not include private conversations or screenshots containing
 secrets in public bug reports. This safeguard does not revoke exposed credentials.
 
 There is no configurable destination policy, approval inbox, approval expiry,
@@ -44,7 +46,8 @@ Those are separate follow-up work, not implicitly enabled by the redline.
 Node tests exercise pattern rejection, exact key comparison, malformed input,
 snapshot immutability, all three adapter paths, team phases, and retry behavior.
 The native Electron smoke test uses an isolated profile and loopback fixture;
-Korean/English UI checks assert zero model requests for blocked input.
+Korean/English UI checks assert zero model requests for blocked input, and verify
+clean follow-up, edit and delete recovery against a local fixture.
 No paid provider calls or real account authentication are used.
 
 ## 한국어 요약
@@ -52,7 +55,9 @@ No paid provider calls or real account authentication are used.
 0.5.11-preview에 추가한 1차 모델 전송 차단 기능입니다. 기존 0.5.10 설치 파일에는 없습니다.
 메모리·역할 프롬프트를 포함한 최종 메시지에서 알려진 인증 정보 형식과 현재 API 키를
 검사하며, 개인·팀·재시도에 동일한 어댑터 검사를 적용합니다. 승인 버튼으로 넘길 수 없습니다.
-차단된 내용을 대화 이력이 계속 포함하면 새 대화를 시작해 해당 내용을 제외해야 합니다.
+0.5.12에서는 실패한 메시지를 후속 전송에서 제외하고 수정·삭제할 수 있습니다.
+수정은 자동 재전송하지 않으며 작성 중인 초안을 덮어쓰지 않습니다. 시간 초과·취소는
+공급자 미수신을 보장하지 않습니다. 0.5.11 설치본에서는 새 대화를 시작해야 합니다.
 
 패턴 검사는 완전한 민감정보 탐지가 아닙니다. 인코딩·난독화·분할된 비밀값과 알 수 없는
 형식은 놓칠 수 있습니다. 로그인·토큰 갱신·Slack 및 외부 프로세스 내부 네트워크 전체를

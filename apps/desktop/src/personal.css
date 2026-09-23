@@ -29,6 +29,8 @@
 .personal-message.user strong { color: #565e71; }
 .personal-message p { white-space: pre-wrap; line-height: 1.75; margin-top: 8px; }
 .personal-message small { display: block; color: #737780; margin-top: 8px; }
+.personal-message-actions { display: grid; grid-template-columns: minmax(0, 1fr) 32px 32px; align-items: center; width: fit-content; max-width: 100%; gap: 8px; margin-top: 8px; color: #9c3241; font-size: 12px; }
+.personal-message-actions span { min-width: 0; overflow-wrap: anywhere; }
 .personal-pending { display: flex; gap: 8px; align-items: center; font-size: 13px; }
 .personal-chat .composer { flex-shrink: 0; }
 .personal-chat .composer textarea { width: 100%; }

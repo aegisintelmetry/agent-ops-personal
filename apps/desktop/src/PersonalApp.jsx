@@ -1,6 +1,6 @@
 import { useI18n, LanguageSelect } from "./Language";
 import React, { useEffect, useReducer, useState } from "react";
-import { ArrowUp, Check, CircleAlert, Cpu, FolderOpen, KeyRound, LoaderCircle, MessageSquare, PanelLeft, PanelRight, Plug, Plus, Save, Settings2, Shield, Square, Trash2, Workflow, X } from "lucide-react";
+import { ArrowUp, Check, CircleAlert, Cpu, FolderOpen, KeyRound, LoaderCircle, MessageSquare, PanelLeft, PanelRight, Pencil, Plug, Plus, Save, Settings2, Shield, Square, Trash2, Workflow, X } from "lucide-react";
 import RunSummary from "./RunSummary";
 import SlackPanel from "./SlackPanel";
 import CodexSettings from "./CodexSettings";
@@ -8,7 +8,7 @@ import GoogleSettings from './GoogleSettings';
 import TeamPanel from './TeamPanel';
 import KnowledgePanel from './KnowledgePanel';
 import providers from "../electron/providers.json";
-import { initialSessions, agentSessionsReducer, MAX_SESSIONS } from "./sessions.mjs";
+import { initialSessions, agentSessionsReducer, conversationInput, MAX_SESSIONS } from "./sessions.mjs";
 import "./personal.css";
 
 const native = () => window.btk.personal;
@@ -197,16 +197,18 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
     const text = selected.draft.trim();
     const latestRun = { id: crypto.randomUUID(), startedAt: new Date().toISOString(), status: "running" };
     dispatch({ type: "run", id, value: latestRun });
-    const messages = [...selected.messages.filter(row => row.role === "user" || row.state === "completed").slice(-22).map(({ role, content }) => ({ role, content })), { role: "user", content: text }];
-    dispatch({ type: "messages", id, value: rows => [...rows, { id: crypto.randomUUID(), role: "user", content: text }] });
+    const messages = conversationInput(selected.messages, text);
+    const messageId = crypto.randomUUID();
+    dispatch({ type: "messages", id, value: rows => [...rows, { id: messageId, role: "user", content: text, state: "pending" }] });
     dispatch({ type: "draft", id, value: "" });
     setChatBusy(true); setError("");
     try {
       const result = await native().chat(messages, agentId);
       dispatch({ type: "run", id, value: { ...latestRun, status: result.status, usage: result.usage, agentId: result.agentId, model: result.model } });
-      dispatch({ type: "messages", id, value: rows => [...rows, { id: crypto.randomUUID(), role: "assistant", content: result.text, state: result.status, usage: result.usage }] });
+      dispatch({ type: "messages", id, value: rows => [...rows.map(row => row.id === messageId ? { ...row, state: 'completed' } : row), { id: crypto.randomUUID(), role: "assistant", content: result.text, state: result.status, usage: result.usage }] });
     } catch (e) {
       setError(e.message);
+      dispatch({ type: 'messages', id, value: rows => rows.map(row => row.id === messageId ? { ...row, state: 'failed' } : row) });
       dispatch({ type: "run", id, value: { ...latestRun, status: e.message.includes("요청을 취소했습니다") ? "cancelled" : "failed" } });
     }
     finally { setChatBusy(false); }
@@ -242,11 +244,11 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
           <div className="personal-context"><FolderOpen size={15} /><span title={state.workspace}>{state.workspace || t("작업 폴더 미선택")}</span><small>{t("파일 접근 비활성")}</small></div>
           <div className="personal-transcript" role="log" aria-label={t("개인 대화")}>
             {!selected.messages.length && <div className="personal-empty"><Workflow size={32} className="workspace-logo" /><h1>AEGIS Agent Ops</h1><span>{state.model || t("모델 미연결")}</span></div>}
-            {selected.messages.map(row => <article className={`personal-message ${row.role}`} key={row.id}><strong>{row.role === "user" ? t("나") : state.model}</strong><p>{row.content}</p>{row.state === "partial" && <small>{t("응답 불완전")}</small>}{row.usage && <small>{t("토큰")} {row.usage.total_tokens ?? t("미제공")}</small>}</article>)}
+            {selected.messages.map(row => <article className={`personal-message ${row.role}`} key={row.id}><strong>{row.role === "user" ? t("나") : state.model}</strong><p>{row.content}</p>{row.state === 'failed' && <div className="personal-message-actions"><span>{t('요청 실패 · 후속 전송에서 제외됨')}</span><ButtonIcon label={t('실패한 메시지 수정')} disabled={locked || Boolean(selected.draft)} onClick={() => { dispatch({ type: 'recover', id: selected.id, messageId: row.id, mode: 'edit' }); setError(''); }}><Pencil size={15} /></ButtonIcon><ButtonIcon label={t('실패한 메시지 삭제')} disabled={locked} onClick={() => { dispatch({ type: 'recover', id: selected.id, messageId: row.id, mode: 'remove' }); setError(''); }}><Trash2 size={15} /></ButtonIcon></div>}{row.state === "partial" && <small>{t("응답 불완전")}</small>}{row.usage && <small>{t("토큰")} {row.usage.total_tokens ?? t("미제공")}</small>}</article>)}
             {chatBusy && <div className="personal-pending" role="status"><LoaderCircle size={16} className="spin" />{t("응답 대기 중")}</div>}
           </div>
           <form className="composer" onSubmit={send}><textarea aria-label={t("개인 메시지")} maxLength={16000} disabled={locked} value={selected.draft} onChange={e => dispatch({ type: "draft", id: selected.id, value: e.target.value })} />
-            <div className="composer-bottom"><span>{state.model || t("모델 미연결")}</span>{chatBusy ? <ButtonIcon label={t("개인 답변 중단")} onClick={() => native().cancel().catch(e => setError(e.message))}><Square size={16} /></ButtonIcon> : <button className="send" aria-label={t("개인 메시지 전송")} title={t("전송")} disabled={locked || !state.model || !selected.draft.trim() || (!state.keyConfigured && !["local", "codex"].includes(state.provider))}><ArrowUp size={18} /></button>}</div>
+            <div className="composer-bottom"><span>{state.model || t("모델 미연결")}</span>{chatBusy ? <ButtonIcon label={t("개인 답변 중단")} onClick={() => native().cancel().catch(e => setError(e.message))}><Square size={16} /></ButtonIcon> : <button className="send" aria-label={t("개인 메시지 전송")} title={t("전송")} disabled={locked || !state.model || !selected.draft.trim() || (state.connection === 'google' ? !state.accountConfigured : !state.keyConfigured && !["local", "codex"].includes(state.provider))}><ArrowUp size={18} /></button>}</div>
           </form>
           <div className="personal-destination"><span title={state.endpoint}>{state.endpoint || t("API 주소 미설정")}</span><span>{t("도구 실행 비활성")}</span></div>
         </section>
