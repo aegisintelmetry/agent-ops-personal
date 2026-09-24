@@ -147,3 +147,62 @@ test('Google refresh is persisted without losing the refresh token', async t => 
   assert.equal(new GoogleAccounts(f.options).load().accounts[0].tokens.access_token, 'refreshed-access');
   assert.equal(client.transporter.defaults.timeout, 30000);
 });
+
+test('browser launch failure keeps a cancellable login and supports reopening the same PKCE session', async t => {
+  const f = fixture(t); const id = seed(f.store); let attempts = 0;
+  f.store.openExternal = async url => {
+    attempts++; f.browsers.push(new URL(url));
+    if (attempts === 1) throw new Error('sensitive OS error');
+  };
+  await f.store.login(id); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.store.state().loginId, id);
+  assert.match(f.store.state().error, /브라우저/);
+  assert.ok(!JSON.stringify(f.store.state()).includes('sensitive'));
+  assert.ok(!JSON.stringify(f.store.state()).includes('accounts.google.com'));
+  f.store.reopenLogin(id); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(attempts, 2);
+  assert.equal(f.browsers[0].href, f.browsers[1].href);
+  await callback(f); assert.equal(f.store.state().loginId, null);
+  assert.throws(() => f.store.reopenLogin(id));
+});
+
+test('a stuck browser launcher cannot block state, duplicate launches, or cancellation', async t => {
+  let finish; let calls = 0;
+  const f = fixture(t, { openExternal: () => { calls++; return new Promise(resolve => { finish = resolve; }); } });
+  const id = seed(f.store); await f.store.login(id);
+  assert.equal(f.store.state().browserOpening, true);
+  f.store.reopenLogin(id); assert.equal(calls, 1);
+  f.store.cancelLogin(); assert.equal(f.store.state().loginId, null);
+  finish(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(f.store.state().error, ''); assert.equal(f.store.has(id), true);
+});
+
+test('revoked refresh credentials persist reauthentication state without exposing or deleting credentials', async t => {
+  const f = fixture(t, { clientFactory: options => {
+    const client = new OAuth2Client(options);
+    client.getAccessToken = async () => { throw { response: { data: { error: 'invalid_grant' } } }; };
+    return client;
+  } });
+  const id = seed(f.store);
+  await assert.rejects(f.store.credential(id), /다시 로그인/);
+  assert.equal(f.store.has(id), false);
+  assert.equal(new GoogleAccounts(f.options).state().accounts[0].reauthRequired, true);
+  assert.equal(f.store.load().accounts[0].tokens.refresh_token, 'fixture-refresh');
+  f.store.clientFactory = options => {
+    const client = new OAuth2Client(options);
+    client.getToken = async () => ({ tokens: { access_token: 'new-access', refresh_token: 'new-refresh' } });
+    return client;
+  };
+  await f.store.login(id); await callback(f);
+  assert.equal(f.store.has(id), true);
+  assert.equal(f.store.state().accounts[0].reauthRequired, false);
+});
+
+test('temporary refresh network failures do not mark the account revoked', async t => {
+  const f = fixture(t, { clientFactory: options => {
+    const client = new OAuth2Client(options);
+    client.getAccessToken = async () => { throw new Error('offline'); }; return client;
+  } });
+  const id = seed(f.store); await assert.rejects(f.store.credential(id));
+  assert.equal(f.store.has(id), true);
+});

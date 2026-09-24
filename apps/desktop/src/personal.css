@@ -150,3 +150,10 @@
 .google-settings > label { display: grid; gap: 6px; min-width: 0; }
 .google-settings form { min-width: 0; }
 .google-settings select { min-width: 0; max-width: 100%; }
+.update-dialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 20px; border: 1px solid #cbd5d1; border-radius: 8px; background: #fff; color: #252b29; }
+.update-dialog::backdrop { background: rgb(0 0 0 / 30%); }
+.update-dialog header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.update-dialog h2 { font-size: 18px; margin: 0; }
+.update-dialog p { overflow-wrap: anywhere; }
+.update-dialog progress { width: 100%; }
+.personal-app .sidebar-bottom { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -13,6 +13,7 @@ const { pathToFileURL } = require("node:url");
 const { Bridge, METHODS } = require("./bridge.cjs");
 const { trustedFrame, bundledResource } = require("./security.cjs");
 const { UiPreferences } = require('./preferences.cjs');
+const { DesktopUpdates } = require('./updates.cjs');
 
 // This utility has no WebGL/video surfaces. Avoid retaining a hardware compositor
 // allocation for a mostly static control window; background work lives outside Electron.
@@ -32,6 +33,7 @@ let agents;
 let team;
 let knowledge;
 let googleAccounts;
+let updates;
 let personalDialogActive = false;
 let t = text => text;
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -84,7 +86,7 @@ else {
         return data.connection === 'google' && data.googleAccountId === account.id;
       }).map(agent => ({ id: agent.id, name: agent.name })) })) };
     };
-    for (const method of ['state', 'import', 'login', 'cancelLogin', 'remove', 'model']) ipcMain.handle(`btk:google:${method}`, async (event, params) => {
+    for (const method of ['state', 'import', 'login', 'reopenLogin', 'cancelLogin', 'remove', 'model']) ipcMain.handle(`btk:google:${method}`, async (event, params) => {
       if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('Untrusted request');
       try {
         if (params?.agentId !== agents.data.selected) throw new PersonalError('대화의 에이전트가 변경되었습니다. 선택 상태를 확인해 주세요.');
@@ -92,6 +94,7 @@ else {
         personal.idle();
         if (team.active || personalDialogActive || codex.loginId) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
         if (method === 'cancelLogin') { googleAccounts.cancelLogin(); return googleState(); }
+        if (method === 'reopenLogin') { googleAccounts.reopenLogin(params.id); return googleState(); }
         if (googleAccounts.pending) throw new PersonalError('진행 중인 로그인을 완료하거나 취소해 주세요.');
         if (method === 'login') { await googleAccounts.login(params.id); return googleState(); }
         if (method === 'model') return agents.state(personal.googleModel(params));
@@ -272,6 +275,30 @@ else {
         return bridge.call(method, params);
       });
     }
+    updates = new DesktopUpdates({
+      updater: require('electron-updater').autoUpdater, version: app.getVersion(),
+      enabled: app.isPackaged && process.platform === 'win32',
+      assertIdle: () => {
+        personal?.idle();
+        if (personalFailure || personal?.data.mode !== 'personal' || setupActive || bridge.pending.size || team?.active || personalDialogActive || codex?.loginId || googleAccounts?.pending) throw new Error(t('진행 중인 작업이나 로그인을 먼저 완료해 주세요.'));
+      },
+      confirmInstall: async () => {
+        personalDialogActive = true;
+        try {
+          const answer = await dialog.showMessageBox(window, { type: 'warning', title: t('업데이트 설치'),
+            message: t('앱을 종료하고 업데이트를 설치할까요?'),
+            detail: t('저장하지 않은 대화는 사라집니다. 현재 설치 파일은 코드 서명되지 않았습니다. Windows 보안 경고가 표시될 수 있습니다.'),
+            buttons: [t('취소'), t('재시작 및 설치')], defaultId: 0, cancelId: 0 });
+          return answer.response === 1;
+        } finally { personalDialogActive = false; }
+      },
+    });
+    updates.on('change', state => { if (window && !window.isDestroyed()) window.webContents.send('btk:updates:changed', state); });
+    for (const method of ['state', 'check', 'download', 'install']) ipcMain.handle(`btk:updates:${method}`, async event => {
+      if (!trustedFrame(event, window, entry) || personalFailure || personal?.data.mode !== 'personal') throw new Error('Untrusted request');
+      if (method === 'state' && !isolatedUserData) updates.start();
+      return updates[method]();
+    });
     window = new BrowserWindow({
       title: "AEGIS Agent Ops",
       width: 1360,
@@ -307,6 +334,7 @@ else {
   app.on("before-quit", (event) => {
     if (setupActive) { event.preventDefault(); return; }
     clearInterval(setupMonitor);
+    updates?.stop();
     personal?.cancel();
     team?.cancel();
     googleAccounts?.stop();

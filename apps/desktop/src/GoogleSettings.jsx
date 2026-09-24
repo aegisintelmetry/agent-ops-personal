@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Check, FileKey, LogIn, Save, Square, Trash2 } from 'lucide-react';
+import { Check, FileKey, LogIn, Save, Square, Trash2, ExternalLink } from 'lucide-react';
 import { useI18n } from './Language';
 
 export default function GoogleSettings({ state, busy, run, onSaved }) {
@@ -14,9 +14,14 @@ export default function GoogleSettings({ state, busy, run, onSaved }) {
   const [notice, setNotice] = useState('');
   const account = data?.accounts.find(a => a.id === id);
   const locked = busy || Boolean(data?.loginId);
+  function accept(value) {
+    setData(value); setError(value.error || '');
+    setId(current => value.loginId || (value.accounts.some(a => a.id === current) ? current :
+      value.accounts.some(a => a.id === state.accountId) ? state.accountId : value.accounts[0]?.id || ''));
+  }
   useEffect(() => {
     let live = true;
-    api.state(state.agentId).then(value => { if (live) setData(value); }).catch(e => { if (live) setError(e.message); });
+    api.state(state.agentId).then(value => { if (live) accept(value); }).catch(e => { if (live) setError(e.message); });
     return () => { live = false; };
   }, [state.agentId]);
   useEffect(() => {
@@ -26,9 +31,10 @@ export default function GoogleSettings({ state, busy, run, onSaved }) {
       try {
         const next = await api.state(state.agentId);
         if (!live) return;
-        setData(next); setError(next.error);
+        accept(next);
+        if (!next.loginId) onSaved(await window.btk.personal.state());
         if (next.loginId) timer = setTimeout(poll, 1500);
-      } catch (e) { if (live) { setError(e.message); setData(old => ({ ...old, loginId: null })); } }
+      } catch (e) { if (live) { setError(e.message); timer = setTimeout(poll, 3000); } }
     };
     timer = setTimeout(poll, 1500);
     return () => { live = false; clearTimeout(timer); };
@@ -39,10 +45,10 @@ export default function GoogleSettings({ state, busy, run, onSaved }) {
     {error && <p role="alert">{errorText(error)}</p>}
     <label>{t('연결 계정')}<select aria-label={t('연결 계정')} value={id} disabled={locked || !data} onChange={e => { setId(e.target.value); setNotice(''); }}>
       <option value="">{t('계정 선택')}</option>
-      {data?.accounts.map(a => <option key={a.id} value={a.id}>{a.name} · {a.project} · {t(a.connected ? '연결됨' : '로그인 필요')}</option>)}
+      {data?.accounts.map(a => <option key={a.id} value={a.id}>{a.name} · {a.project} · {t(a.reauthRequired ? '재로그인 필요' : a.connected ? '연결됨' : '로그인 필요')}</option>)}
     </select></label>
     {account && <>
-      <p role="status">{t(data.loginId === id ? '브라우저 로그인 대기 중' : account.connected ? '연결됨' : '로그인 필요')}</p>
+      <p role="status">{t(data.loginId === id ? '브라우저 로그인 대기 중' : account.reauthRequired ? '재로그인 필요' : account.connected ? '연결됨' : '로그인 필요')}</p>
       <p>{t('연결된 에이전트')}: {account.agents.map(a => a.name).join(', ') || t('없음')}</p>
       <div className="personal-actions">
         <button type="button" className="outline-button" disabled={locked} onClick={() => run(async () => { setError(''); setData(await api.login(state.agentId, id)); })}><LogIn size={16} />{t('Google로 로그인')}</button>
@@ -52,7 +58,10 @@ export default function GoogleSettings({ state, busy, run, onSaved }) {
         })}><Trash2 size={16} /></button>
       </div>
     </>}
-    {data?.loginId && <button type="button" className="outline-button" disabled={busy} onClick={() => run(async () => setData(await api.cancelLogin(state.agentId)))}><Square size={16} />{t('로그인 취소')}</button>}
+    {data?.loginId && <div className="personal-actions">
+      <button type="button" className="outline-button" disabled={busy || data.browserOpening} onClick={() => run(async () => accept(await api.reopenLogin(state.agentId, data.loginId)))}><ExternalLink size={16} />{t('브라우저 다시 열기')}</button>
+      <button type="button" className="outline-button" disabled={busy} onClick={() => run(async () => accept(await api.cancelLogin(state.agentId)))}><Square size={16} />{t('로그인 취소')}</button>
+    </div>}
     <form onSubmit={event => { event.preventDefault(); run(async () => {
       const next = await api.import(state.agentId, name); setData(next);
       const added = next.accounts.find(a => !data?.accounts.some(old => old.id === a.id)); if (added) setId(added.id);

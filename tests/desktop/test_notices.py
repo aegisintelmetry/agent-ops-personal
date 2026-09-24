@@ -59,3 +59,18 @@ class NoticesTest(unittest.TestCase):
                    return_value=SimpleNamespace(version='1.0.0', files=[])):
             with self.assertRaisesRegex(ValueError, 'Missing third-party license'):
                 third_party_notices(self.root, self.root)
+
+    def test_lazy_val_fallback_is_version_and_license_scoped(self):
+        folder = self.root / 'node_modules/gaxios'
+        (folder / 'LICENSE').unlink()
+        metadata = {'name': 'lazy-val', 'version': '1.0.5', 'license': 'MIT', 'author': 'Vladimir Krivosheev'}
+        (folder / 'package.json').write_text(json.dumps(metadata))
+        (self.root / 'third-party').mkdir()
+        (self.root / 'third-party/lazy-val-1.0.5.txt').write_text('fixture reviewed MIT declaration')
+        distribution = SimpleNamespace(version='1.0.0', files=[Path('LICENSE')], locate_file=lambda file: self.root / file)
+        with patch('agent_ops.desktop.build_windows.importlib.metadata.distribution', return_value=distribution):
+            self.assertIn('fixture reviewed MIT declaration', third_party_notices(self.root, self.root))
+        metadata['version'] = '1.0.6'
+        (folder / 'package.json').write_text(json.dumps(metadata))
+        with self.assertRaisesRegex(ValueError, 'Missing third-party license'):
+            third_party_notices(self.root, self.root)

@@ -23,6 +23,6 @@ test('Windows package preserves first-party and third-party notices', () => {
       entry.from === `../../${name}` && entry.to === name));
   }
   assert.ok(builder.extraResources.some(entry => entry.to === 'THIRD-PARTY-NOTICES.txt'));
-  assert.equal(builder.publish, null);
+  assert.deepEqual(builder.publish, { provider: 'github', owner: 'aegisintelmetry', repo: 'agent-ops-personal', releaseType: 'release' });
   assert.equal(pkg.private, true);
 });

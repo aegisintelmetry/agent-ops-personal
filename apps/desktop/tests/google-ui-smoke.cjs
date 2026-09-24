@@ -20,7 +20,11 @@ async function launch() {
   let page = await launch(); await page.getByRole('button', { name: '개인용 Personal' }).click();
   await app.evaluate(({ app, dialog, shell }, file) => {
     dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] });
-    shell.openExternal = async url => { global.googleFixtureUrl = url; };
+    global.googleFixtureBrowserAttempts = 0;
+    shell.openExternal = async url => {
+      global.googleFixtureUrl = url;
+      if (++global.googleFixtureBrowserAttempts === 1) throw new Error('fixture browser unavailable');
+    };
     const { GoogleAccounts } = process.mainModule.require(app.getAppPath() + '/electron/google-accounts.cjs');
     const original = GoogleAccounts.prototype.client;
     GoogleAccounts.prototype.client = function (...args) {
@@ -32,8 +36,20 @@ async function launch() {
   await page.getByLabel('연결 방식', { exact: true }).selectOption('google');
   await page.getByLabel('새 연결 이름').fill('Shared Gemini');
   await page.getByRole('button', { name: 'OAuth 클라이언트 가져오기' }).click();
+  // Imported-but-unbound accounts must remain selectable after remounting.
+  await page.reload();
+  await page.getByRole('button', { name: '모델 연결', exact: true }).click();
+  await page.getByRole('button', { name: 'Google로 로그인' }).waitFor();
   await page.getByRole('button', { name: 'Google로 로그인' }).click();
   await page.getByText('브라우저 로그인 대기 중', { exact: true }).waitFor();
+  await page.getByRole('alert').filter({ hasText: '브라우저를 열지 못했습니다.' }).waitFor();
+  fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
+  await page.screenshot({ path: path.join(root, 'artifacts/google-login-recovery.png') });
+  await page.reload();
+  await page.getByRole('button', { name: '모델 연결', exact: true }).click();
+  await page.getByText('브라우저 로그인 대기 중', { exact: true }).waitFor();
+  await page.getByRole('button', { name: '브라우저 다시 열기', exact: true }).click();
+  assert.equal(await app.evaluate(() => global.googleFixtureBrowserAttempts), 2);
   assert.equal(await page.evaluate(async () => { try { await window.btk.personal.agents.create('forbidden'); return false; } catch { return true; } }), true);
   const auth = new URL(await app.evaluate(() => global.googleFixtureUrl));
   const callback = new URL(auth.searchParams.get('redirect_uri'));
@@ -99,5 +115,5 @@ async function launch() {
   await page.getByLabel('Personal message', { exact: true }).fill('Disconnected account');
   assert.equal(await page.getByRole('button', { name: 'Send personal message', exact: true }).isEnabled(), false);
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({ status: 'passed', import: true, mockBrowserLogin: true, sharedMasterWorkerAccount: true, independentModels: true, restart: true, removal: true, widths: [1440, 390], actualProviderRequests: false }));
+  console.log(JSON.stringify({ status: 'passed', import: true, mockBrowserLogin: true, browserFailureRecovery: true, pendingSessionRestored: true, sharedMasterWorkerAccount: true, independentModels: true, restart: true, removal: true, widths: [1440, 390], actualProviderRequests: false }));
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await app?.close(); fs.rmSync(directory, { recursive: true, force: true }); });

@@ -51,9 +51,9 @@ class GoogleAccounts {
     finally { if (fs.existsSync(temporary)) fs.unlinkSync(temporary); }
   }
   state() {
-    return { accounts: this.load().accounts.map(a => ({ id: a.id, name: a.name, provider: 'gemini', project: a.client.project_id, connected: Boolean(a.tokens.refresh_token) })), loginId: this.pending?.id || null, error: this.error };
+    return { accounts: this.load().accounts.map(a => ({ id: a.id, name: a.name, provider: 'gemini', project: a.client.project_id, connected: Boolean(a.tokens.refresh_token) && !a.reauthRequired, reauthRequired: Boolean(a.reauthRequired) })), loginId: this.pending?.id || null, browserOpening: Boolean(this.pending?.opening), error: this.error };
   }
-  has(id) { return this.load().accounts.some(a => a.id === id && a.tokens.refresh_token); }
+  has(id) { return this.load().accounts.some(a => a.id === id && a.tokens.refresh_token && !a.reauthRequired); }
   import(value, name) {
     if (this.pending) fail('진행 중인 로그인을 완료하거나 취소해 주세요.');
     if (typeof name !== 'string' || !name.trim() || name.length > 60 || /[\x00-\x1f]/.test(name)) fail('계정 이름은 1~60자로 입력해 주세요.');
@@ -79,6 +79,7 @@ class GoogleAccounts {
     const finish = error => {
       if (this.pending !== pending) return;
       this.pending = null; this.error = error || ''; clearTimeout(pending.timer);
+      clearTimeout(pending.browserTimer);
       pending.server?.close(); pending.server?.closeAllConnections();
     };
     pending.finish = finish;
@@ -100,7 +101,7 @@ class GoogleAccounts {
           if (this.pending !== pending) { res.end('Login expired.'); return; }
           if (!tokens.refresh_token || !tokens.access_token) throw new Error();
           const data = this.load(); const current = data.accounts.find(a => a.id === id); if (!current) throw new Error();
-          current.tokens = this.tokens(tokens); this.write(data); this.clients.delete(id);
+          current.tokens = this.tokens(tokens); current.reauthRequired = false; this.write(data); this.clients.delete(id);
           res.end('Connected. Return to Agent Ops.'); finish();
         } catch { res.end('Login failed. Return to Agent Ops.'); finish('Google 로그인에 실패했습니다. 프로젝트와 동의 화면 설정을 확인해 주세요.'); }
       });
@@ -115,8 +116,39 @@ class GoogleAccounts {
       const authUrl = pending.client.generateAuthUrl({ access_type: 'offline', prompt: 'consent select_account', scope: SCOPES, state: pending.nonce, code_challenge: codeChallenge, code_challenge_method: 'S256' });
       const url = new URL(authUrl); if (url.origin !== 'https://accounts.google.com' || url.username || url.password) throw new Error();
       pending.timer = setTimeout(() => finish('Google 로그인 시간이 초과되었습니다.'), this.loginTimeoutMs);
-      await this.openExternal(authUrl); return this.state();
+      pending.authUrl = authUrl;
+      this.openBrowser(pending); return this.state();
     } catch { finish('Google 로그인을 시작하지 못했습니다.'); fail('Google 로그인을 시작하지 못했습니다.'); }
+  }
+  openBrowser(pending) {
+    if (this.pending !== pending || pending.opening || pending.busy || !pending.authUrl) return;
+    pending.opening = true; this.error = '';
+    const attempt = {}; pending.browserAttempt = attempt;
+    // Do not let an OS browser-launch promise block cancellation or state polling.
+    const timer = setTimeout(() => {
+      if (this.pending === pending && pending.browserAttempt === attempt) {
+        pending.opening = false; pending.browserAttempt = null;
+        this.error = '브라우저를 열지 못했습니다. 브라우저 다시 열기를 눌러 주세요.';
+      }
+    }, 5000);
+    pending.browserTimer = timer;
+    Promise.resolve().then(() => {
+      if (this.pending === pending && pending.browserAttempt === attempt) return this.openExternal(pending.authUrl);
+    }).catch(() => {
+      if (this.pending === pending && pending.browserAttempt === attempt) this.error = '브라우저를 열지 못했습니다. 브라우저 다시 열기를 눌러 주세요.';
+    }).finally(() => {
+      clearTimeout(timer);
+      if (pending.browserAttempt === attempt) { pending.opening = false; pending.browserAttempt = null; }
+    });
+  }
+  reopenLogin(id) {
+    if (!this.pending || this.pending.id !== id) fail('진행 중인 Google 로그인이 없습니다. 다시 로그인해 주세요.');
+    this.openBrowser(this.pending); return this.state();
+  }
+  requireLogin(id) {
+    const data = this.load(); const account = data.accounts.find(a => a.id === id);
+    if (account) { account.reauthRequired = true; this.write(data); }
+    this.clients.delete(id);
   }
   cancelLogin() { this.pending?.finish(); return this.state(); }
   stop() { this.pending?.finish(); }
@@ -125,7 +157,7 @@ class GoogleAccounts {
   }
   async credential(id) {
     const account = this.load().accounts.find(a => a.id === id);
-    if (!account?.tokens.refresh_token) fail('Google 계정에 먼저 로그인해 주세요.');
+    if (!account?.tokens.refresh_token || account.reauthRequired) fail('Google 계정에 먼저 로그인해 주세요.');
     let client = this.clients.get(id);
     if (!client) {
       client = this.client(account); client.setCredentials(account.tokens);
@@ -136,7 +168,10 @@ class GoogleAccounts {
       this.clients.set(id, client);
     }
     try { const { token } = await client.getAccessToken(); if (!token) throw new Error(); return { token, project: account.client.project_id }; }
-    catch { fail('Google 인증 갱신에 실패했습니다. 다시 로그인해 주세요.'); }
+    catch (error) {
+      if (error?.response?.data?.error === 'invalid_grant') this.requireLogin(id);
+      fail('Google 인증 갱신에 실패했습니다. 다시 로그인해 주세요.');
+    }
   }
   async complete(messages, config, signal, probe) {
     const { prepareMessages } = require('./transmission-policy.cjs');
@@ -152,6 +187,7 @@ class GoogleAccounts {
     });
     if (!response.ok) {
       await response.body?.cancel().catch(() => {});
+      if (response.status === 401) this.requireLogin(config.accountId);
       fail({ 401: 'Google 계정에 다시 로그인해 주세요.', 403: 'Google 프로젝트의 API 권한과 결제 설정을 확인해 주세요.', 404: 'Gemini 모델 ID를 확인해 주세요.', 429: '요청 한도 또는 잔액을 확인해 주세요.' }[response.status] || 'Gemini 요청에 실패했습니다.');
     }
     const result = await boundedJson(response); signal.throwIfAborted();

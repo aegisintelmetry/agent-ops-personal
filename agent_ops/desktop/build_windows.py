@@ -45,6 +45,9 @@ def third_party_notices(app=APP, python_root=None):
             if all(marker in text for marker in ('Copyright', 'Permission is hereby granted',
                                                  'THE SOFTWARE IS PROVIDED', 'SOFTWARE OR THE USE')):
                 licenses = [readme]
+        # This exact tarball declares MIT but omits its license text.
+        if not licenses and (package.get('name'), package.get('version'), package.get('license'), package.get('author')) == ('lazy-val', '1.0.5', 'MIT', 'Vladimir Krivosheev'):
+            licenses = [app / 'third-party/lazy-val-1.0.5.txt']
         if not licenses:
             raise ValueError(f'Missing third-party license: {relative}')
         for file in sorted(licenses):

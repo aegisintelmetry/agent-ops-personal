@@ -5,6 +5,7 @@ import RunSummary from "./RunSummary";
 import SlackPanel from "./SlackPanel";
 import CodexSettings from "./CodexSettings";
 import GoogleSettings from './GoogleSettings';
+import UpdateControl from './UpdateControl';
 import TeamPanel from './TeamPanel';
 import KnowledgePanel from './KnowledgePanel';
 import providers from "../electron/providers.json";
@@ -231,7 +232,7 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
           <ButtonIcon label={t("{0} 삭제", [item.title])} disabled={locked} onClick={() => { if (window.confirm(t("이 대화를 삭제할까요?"))) dispatch({ type: "remove", id: item.id, replacementId: crypto.randomUUID() }); }}><X size={13} /></ButtonIcon>
         </div>)}
       </section>
-      <div className="sidebar-bottom"><button className="outline-button" disabled={locked} onClick={onModeChange}><Shield size={16} />{t("조직 연결")}</button></div>
+      <div className="sidebar-bottom"><UpdateControl /><button className="outline-button" disabled={locked} onClick={onModeChange}><Shield size={16} />{t("조직 연결")}</button></div>
     </aside>
     <main className="main-shell">
       <header className="topbar"><div className="breadcrumb"><ButtonIcon label={t("탐색 표시")} aria-expanded={navOpen} onClick={() => setNavOpen(value => !value)}><PanelLeft size={17} /></ButtonIcon><span>Personal</span><strong>{view === 'team' ? t('팀 작업') : view === "settings" ? t("모델 연결") : view === "connectors" ? t("커넥터") : t("작업 공간")}</strong></div><div className="topbar-actions"><LanguageSelect /><span className="personal-local">{t("중앙 연결 없음")}</span>{view === "chat" && <ButtonIcon label={t("실행 요약 표시")} aria-pressed={showSummary} onClick={() => setShowSummary(value => !value)}><PanelRight size={17} /></ButtonIcon>}</div></header>

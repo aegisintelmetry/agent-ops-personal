@@ -2,6 +2,17 @@ const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("btk", {
   native: true,
+  updates: {
+    state: () => ipcRenderer.invoke('btk:updates:state'),
+    check: () => ipcRenderer.invoke('btk:updates:check'),
+    download: () => ipcRenderer.invoke('btk:updates:download'),
+    install: () => ipcRenderer.invoke('btk:updates:install'),
+    subscribe: callback => {
+      const listener = (_event, state) => callback(state);
+      ipcRenderer.on('btk:updates:changed', listener);
+      return () => ipcRenderer.removeListener('btk:updates:changed', listener);
+    },
+  },
   preferences: {
     read: () => ipcRenderer.invoke('btk:preferences:read'),
     save: language => ipcRenderer.invoke('btk:preferences:save', { language }),
@@ -11,6 +22,7 @@ contextBridge.exposeInMainWorld("btk", {
       state: agentId => ipcRenderer.invoke('btk:google:state', { agentId }),
       import: (agentId, name) => ipcRenderer.invoke('btk:google:import', { agentId, name }),
       login: (agentId, id) => ipcRenderer.invoke('btk:google:login', { agentId, id }),
+      reopenLogin: (agentId, id) => ipcRenderer.invoke('btk:google:reopenLogin', { agentId, id }),
       cancelLogin: agentId => ipcRenderer.invoke('btk:google:cancelLogin', { agentId }),
       remove: (agentId, id) => ipcRenderer.invoke('btk:google:remove', { agentId, id }),
       model: (agentId, config) => ipcRenderer.invoke('btk:google:model', { ...config, agentId }),

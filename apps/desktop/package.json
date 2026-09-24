@@ -1,6 +1,6 @@
 {
   "name": "btk-agent-desktop",
-  "version": "0.5.13",
+  "version": "0.5.15",
   "description": "AEGIS Agent Ops desktop and isolated local core",
   "license": "Apache-2.0",
   "author": {
@@ -18,6 +18,7 @@
     "dist:win": "powershell -NoProfile -File build-windows.ps1"
   },
   "dependencies": {
+    "electron-updater": "6.8.9",
     "google-auth-library": "^11.1.0",
     "lucide-react": "1.47.0",
     "react": "19.3.0",
