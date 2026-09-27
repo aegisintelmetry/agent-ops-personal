@@ -46,7 +46,7 @@ For example, one worker can analyze a proposal while another critiques its assum
 
 ## Install
 
-Download `AEGIS-Agent-Ops-Setup-0.5.15.exe` from the [release page](https://github.com/aegisintelmetry/agent-ops-personal/releases/latest).
+Download `AEGIS-Agent-Ops-Setup-0.5.16.exe` from the [release page](https://github.com/aegisintelmetry/agent-ops-personal/releases/latest).
 
 Starting with 0.5.15, Personal checks for updates automatically. Use **App updates**
 in the sidebar to download, then confirm restart/install. Older versions require
