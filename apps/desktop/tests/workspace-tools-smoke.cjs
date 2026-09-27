@@ -34,6 +34,10 @@ const payloads = [];
   }, server.address().port);
   await page.reload();
   await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
+  // Hosted Windows desktops can clamp native bounds to their display work area.
+  // Fix the functional-test viewport; personal-window-smoke covers native resizing.
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  if (await page.getByRole('button', { name: '작업 패널 표시', exact: true }).getAttribute('aria-pressed') === 'false') await page.getByRole('button', { name: '작업 패널 표시', exact: true }).click();
   await page.getByLabel('출력', { exact: true }).selectOption('markdown');
   await page.getByLabel('소스 추가', { exact: true }).setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Revenue: 42') });
   await page.locator('.workspace-source-chips').getByText('notes.txt').waitFor();
@@ -105,6 +109,7 @@ const payloads = [];
   await app.close();
   app = await launch();
   page = await app.firstWindow(); page.setDefaultTimeout(15000);
+  await page.setViewportSize({ width: 1440, height: 1000 });
   page.on('pageerror', error => errors.push(error.message));
   await page.getByLabel('개인 메시지', { exact: true }).waitFor();
   await page.waitForFunction(() => document.querySelector('textarea[aria-label="개인 메시지"]')?.value === 'Restored unsent draft');
@@ -119,6 +124,7 @@ const payloads = [];
   await page.locator('.personal-message.assistant strong').getByText('workspace-fixture', { exact: true }).waitFor();
   await page.locator('.new-chat').click();
   await app.evaluate(({ BrowserWindow }) => { const win = BrowserWindow.getAllWindows()[0]; win.setMinimumSize(0, 0); win.setSize(390, 760); });
+  await page.setViewportSize({ width: 390, height: 760 });
   await page.waitForTimeout(200);
   await page.getByRole('button', { name: '작업 패널 표시', exact: true }).click();
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
