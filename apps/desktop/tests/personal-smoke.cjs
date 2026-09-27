@@ -99,7 +99,7 @@ async function launch() {
   await instance.close(); instance = null;
   const before = requests.length;
   page = await launch();
-  await page.getByRole("heading", { name: "AEGIS Agent Ops", exact: true }).waitFor();
+  await page.getByRole("log", { name: "개인 대화" }).getByText("wait for cancel", { exact: true }).waitFor();
   assert.equal((await page.evaluate(() => window.btk.personal.state())).keyConfigured, true);
   assert.equal(requests.length, before);
   checks.push("restart_restores_mode_and_key_without_requests");

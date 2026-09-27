@@ -86,7 +86,8 @@ async function chat(page, text, model) {
   await instance.close(); instance = null;
   const count = requests.length;
   page = await launch();
-  await page.getByRole("heading", { name: "AEGIS Agent Ops", exact: true }).waitFor();
+  await page.getByText("reply beta-model", { exact: true }).waitFor();
+  assert.equal(await page.getByText("reply alpha-model", { exact: true }).count(), 0);
   const restored = await page.evaluate(() => window.btk.personal.state());
   assert.equal(restored.agentId, beta.agentId);
   assert.equal(restored.model, "beta-model");
