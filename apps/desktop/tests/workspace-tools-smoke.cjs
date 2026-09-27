@@ -1,0 +1,138 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const http = require('node:http');
+const { _electron } = require('playwright');
+const { pdfFixture, docxFixture } = require('./workspace-fixtures.cjs');
+const root = path.resolve(__dirname, '..');
+const packaged = process.env.BTK_DESKTOP_TEST_EXE;
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-workspace-tools-'));
+let app, server;
+const payloads = [];
+(async () => {
+  server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      payloads.push(JSON.parse(body));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ choices: [{ message: { content: '# Workspace report\n\nRevenue: 42\n\n<script>not executable</script>' }, finish_reason: 'stop' }], usage: { total_tokens: 30 } }));
+    });
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
+  const launch = () => _electron.launch({ executablePath: packaged || path.join(root, 'node_modules/electron/dist/electron.exe'), args: [...(packaged ? [] : [root]), `--user-data-dir=${profile}`], env });
+  app = await launch();
+  let page = await app.firstWindow();
+  page.setDefaultTimeout(15000);
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  await page.getByRole('button', { name: '개인용 Personal' }).waitFor();
+  await page.evaluate(async port => {
+    await window.btk.personal.mode('personal');
+    await window.btk.personal.save({ provider: 'local', endpoint: `http://127.0.0.1:${port}/v1`, model: 'workspace-fixture', maxTokens: 512 });
+  }, server.address().port);
+  await page.reload();
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1440, 1000));
+  await page.getByLabel('출력', { exact: true }).selectOption('markdown');
+  await page.getByLabel('소스 추가', { exact: true }).setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Revenue: 42') });
+  await page.locator('.workspace-source-chips').getByText('notes.txt').waitFor();
+  await page.getByLabel('개인 메시지', { exact: true }).fill('Create a report');
+  await page.getByRole('button', { name: '개인 메시지 전송', exact: true }).click();
+  await page.locator('.workspace-markdown h1').getByText('Workspace report').waitFor();
+  assert.equal(await page.locator('.workspace-markdown script').count(), 0);
+  await page.getByRole('button', { name: '내용 복사', exact: true }).click();
+  await page.locator('.workspace-panel').getByRole('status').filter({ hasText: '복사됨' }).waitFor();
+  assert.match(await app.evaluate(({ clipboard }) => clipboard.readText()), /Workspace report/);
+  await page.getByRole('button', { name: '원문', exact: true }).click();
+  assert.match(payloads[0].messages.at(-1).content, /Revenue: 42/);
+  assert.match(await page.getByLabel('문서 원문', { exact: true }).innerText(), /<script>not executable<\/script>/);
+  assert.equal(await page.locator('.workspace-document script').count(), 0);
+  const exportPath = path.join(profile, 'document-1.md');
+  await app.evaluate(({ dialog }, filePath) => { dialog.showSaveDialog = async () => ({ canceled: false, filePath }); }, exportPath);
+  await page.getByRole('button', { name: '파일 저장', exact: true }).click();
+  await page.locator('.workspace-panel').getByRole('status').filter({ hasText: '저장됨' }).waitFor();
+  const content = fs.readFileSync(exportPath, 'utf8');
+  assert.match(content, /Workspace report/);
+  await page.getByRole('tab', { name: '소스', exact: true }).click();
+  await page.locator('.workspace-source-detail summary').click();
+  await page.locator('.workspace-source-detail pre').getByText('Revenue: 42').waitFor();
+  await page.getByRole('tab', { name: '결과물', exact: true }).click();
+  await page.getByRole('button', { name: '미리보기', exact: true }).click();
+  fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
+  await page.screenshot({ path: path.join(root, 'artifacts/workspace-tools-desktop.png') });
+  await page.locator('.new-chat').click();
+  assert.equal(await page.locator('.workspace-source-chips li').count(), 0);
+  assert.equal(await page.getByLabel('출력', { exact: true }).inputValue(), 'chat');
+  await page.locator('.session-select').filter({ hasText: 'Create a report' }).click();
+  await page.locator('.workspace-markdown h1').getByText('Workspace report').waitFor();
+  await page.getByLabel('소스 추가', { exact: true }).setInputFiles({ name: 'reject.pdf', mimeType: 'application/pdf', buffer: Buffer.from('not supported') });
+  await page.getByRole('alert').filter({ hasText: '읽을 수 없는' }).waitFor();
+  for (const file of [
+    { name: 'reference.pdf', mimeType: 'application/pdf', buffer: pdfFixture() },
+    { name: 'reference.docx', mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', buffer: await docxFixture() },
+  ]) {
+    await page.getByLabel('소스 추가', { exact: true }).setInputFiles(file);
+    await page.locator('.workspace-source-chips').getByText(file.name).waitFor();
+  }
+  await page.getByRole('tab', { name: '소스', exact: true }).click();
+  await page.locator('.workspace-source-detail summary').getByText('reference.pdf').click();
+  await page.locator('.workspace-source-detail pre').getByText('Workspace PDF reference').waitFor();
+  await page.locator('.workspace-source-detail summary').getByText('reference.docx').click();
+  await page.locator('.workspace-source-detail pre').getByText('Workspace Word reference').waitFor();
+  const image = await page.evaluate(() => { const canvas = document.createElement('canvas'); canvas.width = 40; canvas.height = 40; const context = canvas.getContext('2d'); context.fillStyle = '#27a785'; context.fillRect(0, 0, 40, 40); return canvas.toDataURL('image/png').split(',')[1]; });
+  await page.getByLabel('소스 추가', { exact: true }).setInputFiles({ name: 'image.png', mimeType: 'image/png', buffer: Buffer.from(image, 'base64') });
+  await page.locator('.workspace-source-chips').getByText('image.png').waitFor();
+  await page.locator('.workspace-source-detail summary').getByText('image.png').click();
+  assert.ok(await page.locator('.workspace-source-image').evaluate(img => img.complete && img.naturalWidth === 40));
+  await page.getByLabel('개인 메시지', { exact: true }).fill('Read this image');
+  await page.getByRole('button', { name: '개인 메시지 전송', exact: true }).click();
+  await page.getByRole('alert').filter({ hasText: '로컬 미리보기' }).waitFor();
+  assert.equal(payloads.length, 1, 'images must never silently become text-only model requests');
+  await page.getByRole('button', { name: '소스 제거: image.png', exact: true }).click();
+  await page.getByLabel('소스 추가', { exact: true }).setInputFiles({ name: 'secret.txt', mimeType: 'text/plain', buffer: Buffer.from('sk-' + 'fixture'.repeat(5)) });
+  await page.locator('.workspace-source-chips').getByText('secret.txt').waitFor();
+  await page.getByLabel('개인 메시지', { exact: true }).fill('Read the source');
+  await page.getByRole('button', { name: '개인 메시지 전송', exact: true }).click();
+  await page.getByRole('alert').filter({ hasText: '보안 정책' }).waitFor();
+  assert.equal(payloads.length, 1, 'existing transmission policy blocks attached secrets');
+  await page.getByRole('button', { name: '소스 제거: secret.txt', exact: true }).click();
+  await page.getByRole('tab', { name: '결과물', exact: true }).click();
+  await page.getByRole('button', { name: '이 문서 수정 요청', exact: true }).click();
+  assert.match(await page.getByLabel('개인 메시지', { exact: true }).inputValue(), /Workspace report/);
+  // Close immediately after typing: beforeunload must flush the debounced draft.
+  await page.getByLabel('개인 메시지', { exact: true }).fill('Restored unsent draft');
+  await app.close();
+  app = await launch();
+  page = await app.firstWindow(); page.setDefaultTimeout(15000);
+  page.on('pageerror', error => errors.push(error.message));
+  await page.getByLabel('개인 메시지', { exact: true }).waitFor();
+  await page.waitForFunction(() => document.querySelector('textarea[aria-label="개인 메시지"]')?.value === 'Restored unsent draft');
+  assert.equal(await page.locator('.workspace-source-chips li').count(), 3);
+  await page.locator('.workspace-markdown h1').getByText('Workspace report').waitFor();
+  const encrypted = fs.readFileSync(path.join(profile, 'agent-ops-personal/workspace.enc'));
+  assert.ok(!encrypted.includes(Buffer.from('Restored unsent draft')));
+  await page.evaluate(async port => {
+    await window.btk.personal.save({ provider: 'local', endpoint: `http://127.0.0.1:${port}/v1`, model: 'changed-model', maxTokens: 512 });
+  }, server.address().port);
+  await page.reload();
+  await page.locator('.personal-message.assistant strong').getByText('workspace-fixture', { exact: true }).waitFor();
+  await page.locator('.new-chat').click();
+  await app.evaluate(({ BrowserWindow }) => { const win = BrowserWindow.getAllWindows()[0]; win.setMinimumSize(0, 0); win.setSize(390, 760); });
+  await page.waitForTimeout(200);
+  await page.getByRole('button', { name: '작업 패널 표시', exact: true }).click();
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: path.join(root, 'artifacts/workspace-tools-mobile.png') });
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('.workspace-panel').count(), 0);
+  await page.getByLabel('언어 / Language').selectOption('en');
+  await page.getByLabel('Output', { exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Show workspace panel', exact: true }).click();
+  await page.getByRole('tab', { name: 'Sources', exact: true }).waitFor();
+  assert.deepEqual(errors, []);
+  console.log(JSON.stringify({ status: 'passed', checks: ['source context', 'output selection', 'safe Markdown preview', 'download bytes', 'session isolation', 'PDF extraction', 'Word extraction', 'local image preview', 'image send boundary', 'revision draft', 'encrypted restart recovery', 'existing transmission policy', 'mobile panel', 'English'], realProviderCalls: 0, fixtureCalls: payloads.length }));
+})().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
+  await app?.close();
+  server?.closeAllConnections();
+  if (server?.listening) await new Promise(resolve => server.close(resolve));
+});

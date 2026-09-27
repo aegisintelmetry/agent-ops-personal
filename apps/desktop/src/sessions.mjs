@@ -3,11 +3,21 @@ export function newSession(id) { return { id, title: "새 대화", messages: [],
 export function initialSessions(id) { return { selected: id, items: [newSession(id)] }; }
 
 export function conversationInput(messages, text) {
-  return [...messages.filter(row => (row.role === 'user' && !['failed', 'pending'].includes(row.state)) || (row.role === 'assistant' && row.state === 'completed'))
-    .slice(-22).map(({ role, content }) => ({ role, content })), { role: 'user', content: text }];
+  const input = [{ role: 'user', content: text }];
+  let length = JSON.stringify(input).length;
+  const history = messages.filter(row => (row.role === 'user' && !['failed', 'pending'].includes(row.state)) || (row.role === 'assistant' && row.state === 'completed')).slice(-22);
+  // Leave room for role preferences and retrieved memory in the native request limit.
+  for (const { role, content, modelContent } of history.reverse()) {
+    const message = { role, content: modelContent || content };
+    length += JSON.stringify(message).length + 1;
+    if (length > 80000) break;
+    input.unshift(message);
+  }
+  return input;
 }
 
 export function agentSessionsReducer(state, { agentId, action }) {
+  if (action.type === 'hydrate') return { ...state, ...action.groups };
   if (action.type === "ensure") return state[agentId] ? state : { ...state, [agentId]: initialSessions(action.id) };
   return { ...state, [agentId]: sessionReducer(state[agentId], action) };
 }
@@ -29,6 +39,9 @@ export function sessionReducer(state, action) {
     if (item.id !== action.id) return item;
     if (action.type === "run") return { ...item, latestRun: action.value };
     if (action.type === "draft") return { ...item, draft: action.value };
+    if (action.type === 'workspace') return { ...item,
+      sources: action.value.sources ?? item.sources,
+      output: action.value.output ?? item.output };
     if (action.type === 'recover') {
       const target = item.messages.find(row => row.id === action.messageId && row.role === 'user' && row.state === 'failed');
       if (!target || !['edit', 'remove'].includes(action.mode) || (action.mode === 'edit' && item.draft)) return item;

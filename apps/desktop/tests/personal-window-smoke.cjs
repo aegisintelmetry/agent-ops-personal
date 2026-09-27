@@ -36,10 +36,11 @@ let app;
     await page.screenshot({ path: path.join(root, `artifacts/personal-window-${width}.png`) });
   }
   assert.ok(measurements[4].composer.width > measurements[3].composer.width + 300, "wide window must grow the composer");
-  await page.getByRole("button", { name: "실행 요약 표시", exact: true }).click();
-  await page.getByLabel("실행 요약", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "작업 패널 표시", exact: true }).click();
+  await page.getByRole('tab', { name: '실행 요약', exact: true }).click();
+  await page.getByRole('complementary', { name: '실행 요약', exact: true }).waitFor();
   await page.keyboard.press("Escape");
-  assert.equal(await page.getByLabel("실행 요약", { exact: true }).count(), 0);
+  assert.equal(await page.getByRole('complementary', { name: '실행 요약', exact: true }).count(), 0);
   await page.getByRole("button", { name: "탐색 표시", exact: true }).click();
   await page.getByRole("button", { name: "모델 연결", exact: true }).click();
   assert.equal(await page.locator(".sidebar").isVisible(), false);

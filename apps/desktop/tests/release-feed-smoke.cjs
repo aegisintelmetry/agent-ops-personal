@@ -1,0 +1,25 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const { _electron } = require('playwright');
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-release-feed-'));
+const expected = require('../package.json').version;
+let app;
+(async () => {
+  const executable = process.env.BTK_DESKTOP_PREVIOUS_EXE;
+  assert.ok(executable, 'Set BTK_DESKTOP_PREVIOUS_EXE to the previous released app');
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) if (/BTK|MCP|OPENAI|ANTHROPIC|TOKEN|SECRET|API_KEY|ELECTRON_RUN_AS_NODE/i.test(key)) delete env[key];
+  app = await _electron.launch({ executablePath: executable, args: [`--user-data-dir=${profile}`], env });
+  const page = await app.firstWindow();
+  await page.waitForFunction(() => Boolean(window.btk));
+  await page.evaluate(() => window.btk.personal.mode('personal'));
+  const from = await app.evaluate(({ app }) => app.getVersion());
+  assert.notEqual(from, expected);
+  const result = await page.evaluate(() => window.btk.updates.check());
+  assert.equal(result.status, 'available');
+  assert.equal(result.version, expected);
+  assert.equal(result.percent, 0);
+  console.log(JSON.stringify({ status: 'passed', from, available: result.version, publicFeed: true, downloaded: false, installed: false, realProviderRequests: 0 }));
+})().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await app?.close(); });

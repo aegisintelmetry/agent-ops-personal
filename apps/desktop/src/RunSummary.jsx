@@ -1,5 +1,6 @@
 import { useI18n } from "./Language";
 import React from "react";
+import { sessionArtifacts, artifactName } from './workspace.mjs';
 import tools from "../electron/slack-tools.json";
 import { Bot, CheckCircle2, Circle, CircleAlert, FileText, FolderOpen, Hash, LoaderCircle, Plug, Sparkles } from "lucide-react";
 
@@ -10,7 +11,8 @@ function ProgressIcon({ status }) {
   return <Circle size={14} />;
 }
 export default function RunSummary({ state, session, slack, onConnectors }) {
-  const { t, locale } = useI18n();
+  const { t, locale, language } = useI18n();
+  const artifacts = sessionArtifacts(session);
   const run = session.latestRun;
   const labels = { running: t("응답 대기"), completed: t("완료"), partial: t("부분 응답"), failed: t("실패"), cancelled: t("취소") };
   const enabled = slack?.enabled && slack?.tokenConfigured;
@@ -34,7 +36,7 @@ export default function RunSummary({ state, session, slack, onConnectors }) {
       {enabled && <ul className="summary-tools">{tools.map(tool => <li key={tool.id}>{t(tool.name)}<code>{tool.id}</code></li>)}</ul>}
       <p className="summary-empty">{t("모델 자동 호출 미연결")}</p>
     </details>
-    <details open><summary>{t("파일")} <span>0</span></summary><p className="summary-empty"><FileText size={14} />{t("생성된 파일 없음")}</p>
+    <details open><summary>{language === 'en' ? 'Outputs' : '결과물'} <span>{artifacts.length}</span></summary>{artifacts.length ? artifacts.map((row, index) => <p className="summary-item" key={row.id}><FileText size={14} />{artifactName(row, index)}</p>) : <p className="summary-empty"><FileText size={14} />{t("생성된 파일 없음")}</p>}
       {state.workspace && <div className="summary-item"><FolderOpen size={15} /><small title={state.workspace}>{state.workspace}</small></div>}
     </details>
   </aside>;

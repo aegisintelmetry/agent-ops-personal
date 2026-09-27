@@ -45,6 +45,49 @@ class NoticesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Missing third-party license'):
             third_party_notices(self.root, self.root)
 
+    def test_only_absent_optional_packages_can_skip_notices(self):
+        lock_path = self.root / 'package-lock.json'
+        lock = json.loads(lock_path.read_text())
+        lock['packages']['node_modules/other-os-native'] = {'optional': True}
+        lock['packages']['node_modules/react']['optional'] = True
+        lock_path.write_text(json.dumps(lock))
+        distribution = SimpleNamespace(version='1.0.0', files=[Path('LICENSE')],
+                                       locate_file=lambda file: self.root / file)
+        with patch('agent_ops.desktop.build_windows.importlib.metadata.distribution', return_value=distribution):
+            text = third_party_notices(self.root, self.root)
+        self.assertNotIn('other-os-native', text)
+        self.assertIn('node_modules/react', text)
+        (self.root / 'node_modules/react/LICENSE').unlink()
+        with self.assertRaisesRegex(ValueError, 'Missing third-party license'):
+            third_party_notices(self.root, self.root)
+
+    def test_absent_required_package_stops_packaging(self):
+        lock_path = self.root / 'package-lock.json'
+        lock = json.loads(lock_path.read_text())
+        lock['packages']['node_modules/missing-required'] = {}
+        lock_path.write_text(json.dumps(lock))
+        with self.assertRaises(FileNotFoundError):
+            third_party_notices(self.root, self.root)
+
+    def test_canvas_binary_uses_only_matching_parent_license(self):
+        folder = self.root / 'node_modules/gaxios'
+        (folder / 'LICENSE').unlink()
+        metadata = {'name': '@napi-rs/canvas-win32-x64-msvc', 'version': '1.0.9',
+                    'license': 'MIT', 'repository': {'url': 'git+https://github.com/Brooooooklyn/canvas.git'}}
+        (folder / 'package.json').write_text(json.dumps(metadata))
+        parent = self.root / 'node_modules/@napi-rs/canvas'
+        parent.mkdir(parents=True)
+        parent_metadata = {**metadata, 'optionalDependencies': {metadata['name']: '1.0.9'}}
+        (parent / 'package.json').write_text(json.dumps(parent_metadata))
+        (parent / 'LICENSE').write_text('fixture canvas shared MIT notice')
+        distribution = SimpleNamespace(version='1.0.0', files=[Path('LICENSE')], locate_file=lambda file: self.root / file)
+        with patch('agent_ops.desktop.build_windows.importlib.metadata.distribution', return_value=distribution):
+            self.assertIn('fixture canvas shared MIT notice', third_party_notices(self.root, self.root))
+        metadata['version'] = '1.0.10'
+        (folder / 'package.json').write_text(json.dumps(metadata))
+        with self.assertRaisesRegex(ValueError, 'Missing third-party license'):
+            third_party_notices(self.root, self.root)
+
     def test_embedded_mit_notice_is_preserved(self):
         folder = self.root / 'node_modules/gaxios'
         (folder / 'LICENSE').unlink()

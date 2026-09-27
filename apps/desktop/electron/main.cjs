@@ -1,5 +1,5 @@
 require("./stdio.cjs").protectStdio();
-const { app, BrowserWindow, ipcMain, session, dialog, safeStorage, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, session, dialog, safeStorage, shell, clipboard } = require("electron");
 const { CodexConnection } = require("./codex.cjs");
 const { PersonalError } = require("./personal.cjs");
 const { AgentProfiles } = require("./agents.cjs");
@@ -14,6 +14,9 @@ const { Bridge, METHODS } = require("./bridge.cjs");
 const { trustedFrame, bundledResource } = require("./security.cjs");
 const { UiPreferences } = require('./preferences.cjs');
 const { DesktopUpdates } = require('./updates.cjs');
+const { exportDocument } = require('./workspace-export.cjs');
+const { WorkspaceStore } = require('./workspace-store.cjs');
+const { WorkspaceImporter } = require('./workspace-import.cjs');
 
 // This utility has no WebGL/video surfaces. Avoid retaining a hardware compositor
 // allocation for a mostly static control window; background work lives outside Electron.
@@ -32,6 +35,8 @@ let codex;
 let agents;
 let team;
 let knowledge;
+let workspace;
+const workspaceImporter = new WorkspaceImporter();
 let googleAccounts;
 let updates;
 let personalDialogActive = false;
@@ -60,10 +65,29 @@ else {
       googleAccounts = new GoogleAccounts({ directory, safeStorage, openExternal: url => shell.openExternal(url) });
       agents = new AgentProfiles({ directory, safeStorage, googleAccounts });
       knowledge = new KnowledgeStore({ directory, safeStorage });
+      workspace = new WorkspaceStore({ directory, safeStorage });
       personal = agents.service;
       slack = new SlackConnector({ personal });
       codex = new CodexConnection({ directory: agents.location(agents.data.selected), openExternal: url => shell.openExternal(url) });
     } catch { personalFailure = true; }
+    const workspaceRequest = (event, method, params) => {
+      if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('workspace_storage');
+      if (method === 'read') {
+        const groups = workspace.load();
+        return Object.fromEntries(Object.entries(groups).filter(([id]) => agents.data.agents.some(agent => agent.id === id)));
+      }
+      if (!params || Object.keys(params).some(id => !agents.data.agents.some(agent => agent.id === id))) throw new Error('workspace_storage');
+      return workspace.save(params);
+    };
+    for (const method of ['read', 'save']) ipcMain.handle(`btk:workspace:${method}`, (event, params) => workspaceRequest(event, method, params));
+    ipcMain.on('btk:workspace:flush', (event, params) => {
+      try { event.returnValue = workspaceRequest(event, 'save', params); }
+      catch { event.returnValue = { saved: false }; }
+    });
+    ipcMain.handle('btk:workspace:import', async (event, params) => {
+      if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('source_content');
+      return workspaceImporter.read(params);
+    });
     const complete = async (messages, options) => {
       if (!options?.probe && Array.isArray(messages)) messages = enrich(messages, knowledge.snapshot(agents.data.selected), messages.at(-1)?.content);
       if (personal.data.connection !== "codex") return personal.complete(messages, options);
@@ -148,7 +172,7 @@ else {
       } finally { personalDialogActive = false; }
       return team.start(params, agents.data.agents);
     });
-    for (const method of ["state", "agent_create", "agent_select", "agent_rename", "mode", "connection", "codex_state", "codex_login", "codex_cancelLogin", "codex_logout", "codex_models", "codex_limits", "codex_model", "save", "removeKey", "folder", "test", "chat", "cancel", "slack_state", "slack_save", "slack_enable", "slack_remove", "slack_test", "slack_channels", "slack_cancel"]) {
+    for (const method of ["state", "agent_create", "agent_select", "agent_rename", "mode", "connection", "codex_state", "codex_login", "codex_cancelLogin", "codex_logout", "codex_models", "codex_limits", "codex_model", "save", "removeKey", "folder", "export", "copy", "test", "chat", "cancel", "slack_state", "slack_save", "slack_enable", "slack_remove", "slack_test", "slack_channels", "slack_cancel"]) {
       ipcMain.handle(`btk:personal:${method}`, async (event, params) => {
         if (!trustedFrame(event, window, entry)) throw new Error("신뢰할 수 없는 요청입니다.");
         if (personalFailure) throw new Error("개인용 보안 설정을 읽지 못했습니다. 저장 위치와 기존 설정을 확인해 주세요.");
@@ -212,6 +236,17 @@ else {
               const selection = await dialog.showOpenDialog(window, { properties: ["openDirectory"] });
               return agents.state(selection.canceled ? personal.state() : personal.workspace(selection.filePaths[0]));
             } finally { personalDialogActive = false; }
+          }
+          if (method === 'export') {
+            personal.idle();
+            personalDialogActive = true;
+            try { return await exportDocument(params, options => dialog.showSaveDialog(window, options)); }
+            finally { personalDialogActive = false; }
+          }
+          if (method === 'copy') {
+            if (typeof params?.content !== 'string' || Buffer.byteLength(params.content) > 1024 * 1024) throw new PersonalError('복사할 내용을 확인해 주세요.');
+            clipboard.writeText(params.content);
+            return { copied: true };
           }
           if (method === "test") {
             personal.idle();

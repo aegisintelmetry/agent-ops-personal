@@ -35,6 +35,10 @@ def third_party_notices(app=APP, python_root=None):
         directory = (app / relative).resolve()
         if not directory.is_relative_to((app / 'node_modules').resolve()):
             raise ValueError('Dependency license path escapes node_modules')
+        # Lockfiles include optional native packages for other operating systems.
+        # Absent packages are not shipped; installed optional packages still need notices.
+        if info.get('optional') and not directory.exists():
+            continue
         package = json.loads((directory / "package.json").read_text(encoding="utf-8"))
         licenses = [file for file in directory.iterdir() if file.is_file()
                     and file.name.lower().startswith(('license', 'licence', 'copying', 'notice'))]
@@ -48,6 +52,15 @@ def third_party_notices(app=APP, python_root=None):
         # This exact tarball declares MIT but omits its license text.
         if not licenses and (package.get('name'), package.get('version'), package.get('license'), package.get('author')) == ('lazy-val', '1.0.5', 'MIT', 'Vladimir Krivosheev'):
             licenses = [app / 'third-party/lazy-val-1.0.5.txt']
+        # The platform tarball names its parent package but omits the shared MIT text.
+        if not licenses and (package.get('name'), package.get('version'), package.get('license')) == ('@napi-rs/canvas-win32-x64-msvc', '1.0.9', 'MIT'):
+            parent = app / 'node_modules/@napi-rs/canvas'
+            metadata = json.loads((parent / 'package.json').read_text(encoding='utf-8'))
+            if (metadata.get('version') == package['version']
+                    and metadata.get('license') == 'MIT'
+                    and metadata.get('repository', {}).get('url') == package.get('repository', {}).get('url') == 'git+https://github.com/Brooooooklyn/canvas.git'
+                    and metadata.get('optionalDependencies', {}).get(package['name']) == package['version']):
+                licenses = [parent / 'LICENSE']
         if not licenses:
             raise ValueError(f'Missing third-party license: {relative}')
         for file in sorted(licenses):

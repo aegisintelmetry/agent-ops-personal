@@ -38,6 +38,8 @@ const payloads = [];
     const before = calls;
     await page.evaluate(language => window.btk.preferences.save(language), language);
     await page.reload();
+    // Reload now restores history; each language case explicitly starts a new conversation.
+    await page.locator('.new-chat').click();
     await app.evaluate(({ BrowserWindow }, width) => { const win = BrowserWindow.getAllWindows()[0]; win.setMinimumSize(0, 0); win.setSize(width, 900); }, width);
     await page.waitForFunction(width => innerWidth <= width, width);
     await page.waitForTimeout(150);

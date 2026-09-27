@@ -33,7 +33,7 @@ let app;
     await page.waitForTimeout(200);
     const layout = await page.evaluate(() => {
       const rect = selector => { const r = document.querySelector(selector)?.getBoundingClientRect(); return r ? { x:r.x, y:r.y, width:r.width, height:r.height } : null; };
-      return { width: innerWidth, names: document.querySelectorAll('.personal-agent-name').length, children: [...document.querySelector('.personal-workspace').children].map(e => e.className), chat: rect('.personal-chat'), summary: rect('.run-summary') };
+      return { width: innerWidth, names: document.querySelectorAll('.personal-agent-name').length, children: [...document.querySelector('.personal-workspace').children].map(e => e.className), chat: rect('.personal-chat'), summary: rect('.workspace-panel') };
     });
     console.log(JSON.stringify(layout));
     await page.screenshot({ path: path.join(root, `artifacts/layout-transition-${width}.png`) });

@@ -1,6 +1,6 @@
 {
   "name": "btk-agent-desktop",
-  "version": "0.5.15",
+  "version": "0.5.16",
   "description": "AEGIS Agent Ops desktop and isolated local core",
   "license": "Apache-2.0",
   "author": {
@@ -14,20 +14,26 @@
     "build": "vite build",
     "start": "electron .",
     "test": "node --test tests/*.test.cjs",
-    "test:desktop": "node tests/edition-boundary-smoke.cjs && node tests/personal-window-smoke.cjs && node tests/agents-ui-smoke.cjs && node tests/language-ui-smoke.cjs && node tests/team-ui-smoke.cjs && node tests/layout-transition-smoke.cjs && node tests/knowledge-ui-smoke.cjs && node tests/google-ui-smoke.cjs && node tests/transmission-ui-smoke.cjs",
+    "test:desktop": "node tests/edition-boundary-smoke.cjs && node tests/personal-window-smoke.cjs && node tests/agents-ui-smoke.cjs && node tests/language-ui-smoke.cjs && node tests/team-ui-smoke.cjs && node tests/layout-transition-smoke.cjs && node tests/knowledge-ui-smoke.cjs && node tests/google-ui-smoke.cjs && node tests/transmission-ui-smoke.cjs && node tests/workspace-tools-smoke.cjs",
     "dist:win": "powershell -NoProfile -File build-windows.ps1"
   },
   "dependencies": {
     "electron-updater": "6.8.9",
     "google-auth-library": "^11.1.0",
     "lucide-react": "1.47.0",
+    "mammoth": "^1.13.0",
+    "pdfjs-dist": "^6.3.289",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "yauzl": "^3.4.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "6.1.1",
     "electron": "44.4.1",
     "electron-builder": "26.16.1",
+    "jszip": "^3.10.2",
     "playwright": "1.56.1",
     "resedit": "1.7.2",
     "vite": "8.3.0"

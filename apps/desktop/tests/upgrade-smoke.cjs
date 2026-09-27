@@ -33,7 +33,9 @@ function savedFiles() {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const file = path.join(dir, entry.name);
       if (entry.isDirectory()) read(file);
-      else files.set(path.relative(directory, file), fs.readFileSync(file));
+      // Workspace ciphertext is rewritten by autosave; compare immutable settings here.
+      // workspace-tools-smoke separately verifies decrypted conversation restoration.
+      else if (entry.name !== 'workspace.enc') files.set(path.relative(directory, file), fs.readFileSync(file));
     }
   }
   read(path.join(directory, 'agent-ops-personal'));
@@ -102,12 +104,13 @@ exit $p.ExitCode`,
   await app.close(); app = null;
   page = await launch(candidate);
   await page.getByLabel('Personal message', { exact: true }).waitFor();
-  assert.equal(await page.locator('.personal-message').count(), 0, 'Conversation persistence is not implemented');
+  await page.locator('.personal-message.assistant').filter({ hasText: 'Upgrade fixture response' }).waitFor();
+  assert.equal(await page.locator('.personal-message').count(), 2, 'New-version conversations must survive restart');
   assert.equal(requests.length, 1);
   assert.deepEqual(errors, []);
   const report = { status: 'passed', from, to, installerExecuted: installUpgrade, noDevelopmentRuntimeOnPath: true,
     preserved: ['agents', 'models', 'encrypted-key', 'team', 'role', 'memory', 'language'], startupRequests: 0,
-    fixtureRequests: 1, realProviderRequests: 0, conversationsPersisted: false };
+    fixtureRequests: 1, realProviderRequests: 0, conversationsPersisted: true };
   fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
   fs.writeFileSync(path.join(root, `artifacts/upgrade-smoke-${from}-to-${to}${installUpgrade ? '-installed' : ''}.json`), JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report));

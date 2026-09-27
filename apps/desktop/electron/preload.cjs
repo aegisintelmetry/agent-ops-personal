@@ -18,6 +18,12 @@ contextBridge.exposeInMainWorld("btk", {
     save: language => ipcRenderer.invoke('btk:preferences:save', { language }),
   },
   personal: {
+    workspace: {
+      read: () => ipcRenderer.invoke('btk:workspace:read'),
+      save: groups => ipcRenderer.invoke('btk:workspace:save', groups),
+      flush: groups => ipcRenderer.sendSync('btk:workspace:flush', groups),
+      import: params => ipcRenderer.invoke('btk:workspace:import', params),
+    },
     google: {
       state: agentId => ipcRenderer.invoke('btk:google:state', { agentId }),
       import: (agentId, name) => ipcRenderer.invoke('btk:google:import', { agentId, name }),
@@ -70,6 +76,8 @@ contextBridge.exposeInMainWorld("btk", {
     save: (params) => ipcRenderer.invoke("btk:personal:save", params),
     removeKey: () => ipcRenderer.invoke("btk:personal:removeKey"),
     folder: () => ipcRenderer.invoke("btk:personal:folder"),
+    exportDocument: params => ipcRenderer.invoke('btk:personal:export', params),
+    copyDocument: content => ipcRenderer.invoke('btk:personal:copy', { content }),
     test: () => ipcRenderer.invoke("btk:personal:test"),
     chat: (messages, agentId) => ipcRenderer.invoke("btk:personal:chat", { messages, agentId }),
     cancel: () => ipcRenderer.invoke("btk:personal:cancel"),
