@@ -10,7 +10,8 @@ async function launch() {
   const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
   const exe = process.env.BTK_DESKTOP_TEST_EXE;
   app = await _electron.launch({ executablePath: exe || path.join(root, 'node_modules/electron/dist/electron.exe'), args: [...(exe ? [] : [root]), `--user-data-dir=${profile}`], env });
-  await app.evaluate(({ app }) => {
+  await app.evaluate(({ app, dialog }) => {
+    dialog.showMessageBox = async () => ({ response: 1 });
     const { CodexConnection } = process.mainModule.require(app.getAppPath() + '/electron/codex.cjs');
     global.effortCalls = [];
     CodexConnection.prototype.state = async () => ({ connected: true, pending: false, plan: 'fixture', error: '' });

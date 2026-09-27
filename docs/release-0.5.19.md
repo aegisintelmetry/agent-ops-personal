@@ -27,6 +27,21 @@ The installer, blockmap and latest.yml are generated together. **The Windows
 installer is unsigned.** Checksums verify integrity, not publisher identity.
 Do not disable Windows security controls.
 
+## Local Validation
+
+- 172 Node tests and 113 Python tests passed; npm audit reported no vulnerabilities.
+- Packaged checks passed for fresh-profile startup without development runtimes,
+  edition boundaries, agents, language, teams, layout transitions, memory, Google
+  and Gemini CLI flows, transmission controls, workspace imports, ZIP/large-file
+  handling, images, composer controls, reasoning effort and the update UI.
+- The unpacked 0.5.18-to-0.5.19 upgrade test preserved agents, models, encrypted
+  test credentials, teams, role prompts, memory, language and conversations.
+- Installer size and SHA-512 matched latest.yml. All three uploaded release
+  asset SHA-256 digests matched the local build. Authenticode status: NotSigned.
+- Secret scanning found no leaks in the release changes. No live model calls
+  were made. The reasoning-effort smoke initially waited on a native approval
+  dialog; its fixture response was added and the packaged test then passed.
+
 ## Scope and Limits
 
 - A 512 MiB import limit does not mean full-file analysis. At most 12,000 extracted
@@ -35,7 +50,7 @@ Do not disable Windows security controls.
   uploaded or retained by this import path. At most five attachments are selected.
 - Archives reject traversal paths, symlinks, encryption and excessive expansion.
   Nested ZIPs and unsupported binary entries are skipped; PDF/DOCX entries inside
-  ZIPs are limited to 16 MiB. See [workspace limits](personal-workspace-first.md).
+  ZIPs are limited to 16 MiB. See [workspace limits](https://github.com/aegisintelmetry/agent-ops-personal/blob/v0.5.19/docs/personal-workspace-first.md).
 - Images retain the 16-million-pixel limit; model input is at most 2 MiB per
   image after optimization. Provider support and usage charges still apply.
 - Reasoning effort selection applies to ChatGPT/Codex login only. Availability
