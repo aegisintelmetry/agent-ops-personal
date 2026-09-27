@@ -88,7 +88,7 @@ async function launch() {
   await page.getByRole("log", { name: "개인 대화" }).getByText("토큰 11", { exact: true }).waitFor();
   await page.screenshot({ path: path.join(output, "personal-chat-1440.png") });
   checks.push("native_chat_round_trip_and_measured_usage");
-  await page.getByRole("button", { name: "새 대화", exact: true }).click();
+  await page.locator("button.new-chat").click();
   await page.getByLabel("개인 메시지", { exact: true }).fill("wait for cancel");
   await page.getByRole("button", { name: "개인 메시지 전송", exact: true }).click();
   await page.waitForTimeout(250);
