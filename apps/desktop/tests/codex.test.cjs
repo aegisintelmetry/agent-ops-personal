@@ -103,6 +103,28 @@ test("Codex chat creates an ephemeral isolated read-only thread", async t => {
   assert.equal(start.params.ephemeral, true); assert.equal(start.params.cwd, path.join(f.directory, "codex-workspace"));
   assert.equal(start.params.approvalPolicy, "never"); assert.equal(f.service.active, null);
 });
+
+test('Codex vision sends attached image items without file paths or tool access', async t => {
+  const { image } = require('./image-fixture.cjs');
+  const f = fixture(t);
+  await f.service.complete([{ role: 'user', content: 'Describe the image', images: [image] }], 'fixture-model');
+  const turn = f.calls.find(call => call.method === 'turn/start');
+  assert.deepEqual(turn.params.input[1], { type: 'image', url: image });
+  assert.equal(JSON.parse(turn.params.input[0].text).content, 'Describe the image');
+  assert.equal(f.calls.find(call => call.method === 'thread/start').params.approvalPolicy, 'never');
+});
+
+test('Codex allows bounded image echoes while retaining the assistant text limit', async t => {
+  const { png } = require('./image-fixture.cjs');
+  const image = `data:image/png;base64,${Buffer.concat([png, Buffer.alloc(1024 * 1024)]).toString('base64')}`;
+  const f = fixture(t, { handle(message, emit) {
+    if (message.method !== 'turn/start') return false;
+    emit({ method: 'item/completed', params: { threadId: 'fixture-thread', item: { type: 'userMessage', content: message.params.input } } });
+    return false;
+  } });
+  const result = await f.service.complete([{ role: 'user', content: 'Compare images', images: Array(4).fill(image) }], 'fixture-model');
+  assert.equal(result.status, 'completed');
+});
 test("tool approvals are rejected and RPC errors are sanitized", async t => {
   const f = fixture(t, { handle: (message, emit) => {
     if (message.method !== "model/list") return false;

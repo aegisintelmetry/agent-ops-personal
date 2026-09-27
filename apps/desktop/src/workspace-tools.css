@@ -40,6 +40,13 @@
 .workspace-source-image { display: block; max-width: 100%; max-height: 400px; object-fit: contain; margin-top: 12px; }
 .personal-context { flex-wrap: wrap; }
 .workspace-storage-state { margin-left: auto; }
+.workspace-image-model { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; margin-top: 8px; }
+.workspace-image-model input { flex: 1; min-width: 120px; max-width: 100%; border: 1px solid #dce1e7; border-radius: 4px; padding: 6px 8px; }
+.workspace-generated-image { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; }
+.workspace-message-images { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.workspace-message-images figure { margin: 0; max-width: 100%; width: 280px; }
+.workspace-message-images img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; border: 1px solid #dce1e7; border-radius: 4px; }
+.personal-message.user .workspace-message-images figure { width: 100px; }
 .workspace-source-detail { border-bottom: 1px solid #e0e4ea; padding: 12px 0; overflow-wrap: anywhere; font-size: 13px; }
 .workspace-source-detail summary { cursor: pointer; }
 .workspace-source-detail pre { margin-top: 12px; }

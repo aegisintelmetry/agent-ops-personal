@@ -41,6 +41,19 @@ test('interrupted requests become retryable failures, never completed history', 
   assert.deepEqual(conversationInput(recovered.messages, 'next'), [{ role: 'user', content: 'next' }]);
 });
 
+test('image results and selected generation model survive encrypted restart', () => {
+  const { image } = require('./image-fixture.cjs');
+  const value = store(); value.load();
+  const data = groups(); const session = data.default.items[0];
+  session.output = 'image'; session.imageModel = 'fixture-image-model';
+  session.messages[0] = { ...session.messages[0], content: '', images: [image], output: 'image' };
+  value.save(data);
+  assert.ok(!fs.readFileSync(value.file).includes(Buffer.from(image)));
+  const result = new WorkspaceStore({ directory: value.directory, safeStorage }).load().default.items[0];
+  assert.equal(result.imageModel, 'fixture-image-model');
+  assert.deepEqual(result.messages[0].images, [image]);
+});
+
 test('corrupt store and unavailable encryption preserve original bytes', () => {
   const value = store();
   fs.writeFileSync(value.file, 'corrupt');

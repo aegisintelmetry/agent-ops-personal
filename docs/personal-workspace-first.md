@@ -9,7 +9,7 @@ remain enabled.
 
 ## Available
 
-- Composer: Chat, Markdown document or plain-text document output.
+- Composer: Chat, Markdown document, plain-text document or image output.
 - Explicit file selection: UTF-8 TXT, MD, CSV and JSON; up to five files and
   12,000 source characters total, at most 48 KB per file before decoding.
 - Text extraction from PDF and DOCX, at most 2 MiB per file. PDF is limited to
@@ -17,9 +17,9 @@ remain enabled.
   Parsing runs in a disposable worker with a 15-second timeout and a 128 MiB
   V8 old-generation limit (not a total process-memory ceiling). DOCX ZIP entries
   are bounded and validated before extraction. No Office installation is required.
-- PNG, JPEG and WebP can be inspected locally (2 MiB, 16 million pixels).
-  Image attachments are explicitly **not** sent to text-only model connections;
-  sending is blocked until they are removed. This is not image analysis/generation.
+- PNG, JPEG and WebP can be sent to vision-capable models after native confirmation
+  (2 MiB, 16 million pixels). Image generation and explicit saving are available
+  on supported connections; see [image workspace](personal-images.md).
 - File-picker and drag-and-drop input share the same validation and limits.
 - Attached text is sent with the next request through the existing guarded model
   path. The composer displays that transmission boundary before sending.
@@ -46,15 +46,15 @@ remain enabled.
   Request context retains recent successful messages within 80,000 serialized
   characters, leaving room for existing memory enrichment. Older visible history
   remains on disk but may not be included in a model call.
-- Up to 20 agents, 20 sessions per agent, 500 messages per session and 12 MiB total
+- Up to 20 agents, 20 sessions per agent, 500 messages per session and 32 MiB total
   serialized workspace data. Reaching a storage limit reports an error; it never
   silently discards history. Remove unused conversations to recover space.
 
 ## Deferred
 
-Image analysis/generation, OCR, native Word editing/export, XLSX/PPTX processing,
+Image-to-image editing, dedicated OCR, native Word editing/export, XLSX/PPTX processing,
 HTML publishing and new governance workflows are not implemented by this change.
-Only TXT/MD output is exported. PDF/Word import extracts text, not page layout or
+TXT/MD and generated raster images can be exported. PDF/Word import extracts text, not page layout or
 embedded images. Cross-device synchronization is not provided. This change does
 not sign an installer or automatically update an installed copy. Release details
 and upgrade instructions are recorded in [0.5.16](releases/0.5.16.md).

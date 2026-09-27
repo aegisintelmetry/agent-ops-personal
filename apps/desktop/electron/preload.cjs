@@ -33,6 +33,13 @@ contextBridge.exposeInMainWorld("btk", {
       remove: (agentId, id) => ipcRenderer.invoke('btk:google:remove', { agentId, id }),
       model: (agentId, config) => ipcRenderer.invoke('btk:google:model', { ...config, agentId }),
     },
+    gemini: {
+      state: agentId => ipcRenderer.invoke('btk:gemini:state', { agentId }),
+      login: agentId => ipcRenderer.invoke('btk:gemini:login', { agentId }),
+      cancelLogin: agentId => ipcRenderer.invoke('btk:gemini:cancelLogin', { agentId }),
+      logout: agentId => ipcRenderer.invoke('btk:gemini:logout', { agentId }),
+      model: (agentId, model) => ipcRenderer.invoke('btk:gemini:model', { agentId, model }),
+    },
     knowledge: {
       read: agentId => ipcRenderer.invoke('btk:knowledge:read', { agentId }),
       prompt: (agentId, value) => ipcRenderer.invoke('btk:knowledge:prompt', { agentId, value }),
@@ -77,6 +84,8 @@ contextBridge.exposeInMainWorld("btk", {
     removeKey: () => ipcRenderer.invoke("btk:personal:removeKey"),
     folder: () => ipcRenderer.invoke("btk:personal:folder"),
     exportDocument: params => ipcRenderer.invoke('btk:personal:export', params),
+    exportImage: params => ipcRenderer.invoke('btk:personal:exportImage', params),
+    generateImage: (messages, agentId, imageModel) => ipcRenderer.invoke('btk:personal:generateImage', { messages, agentId, imageModel }),
     copyDocument: content => ipcRenderer.invoke('btk:personal:copy', { content }),
     test: () => ipcRenderer.invoke("btk:personal:test"),
     chat: (messages, agentId) => ipcRenderer.invoke("btk:personal:chat", { messages, agentId }),

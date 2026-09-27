@@ -47,7 +47,7 @@
 
 0.5.15부터 Personal에서 새 버전을 자동 확인합니다. 사이드바의 **앱 업데이트**에서 다운로드하고 재시작·설치를 승인할 수 있습니다. 이전 버전은 이번 설치본을 한 번 직접 설치해야 합니다. [업데이트 동작과 제한](docs/desktop-updates.md).
 
-1. [릴리스 페이지](https://github.com/aegisintelmetry/agent-ops-personal/releases/latest)에서 `AEGIS-Agent-Ops-Setup-0.5.16.exe`를 내려받습니다.
+1. [릴리스 페이지](https://github.com/aegisintelmetry/agent-ops-personal/releases/latest)에서 `AEGIS-Agent-Ops-Setup-0.5.18.exe`를 내려받습니다.
 2. Windows x64에 설치하고 **Personal**을 선택합니다.
 3. 에이전트의 모델 연결을 설정한 뒤 대화하거나 팀을 구성합니다.
 
@@ -103,9 +103,19 @@ flowchart TD
 | OpenAI·DeepSeek·Kimi·Gemini | 사용자가 입력한 API 키 |
 | OpenAI 호환·로컬 모델 | 직접 지정한 주소와 모델 |
 | ChatGPT / Codex | 기존 에이전트별 Codex 로그인 연결 |
+| Google / Gemini CLI | API 키·클라이언트 JSON 없는 로그인, 계정 공유 및 에이전트별 모델 설정 |
 | Gemini API OAuth | 공유 Google 계정 연결, 사용자 소유 Desktop OAuth 클라이언트 필요 |
 
 공급자별 API 요금과 사용 한도가 적용됩니다. 채팅 구독과 API는 같은 권한이 아닙니다. Gemini OAuth는 웹 구독이 아니라 Google Cloud 프로젝트의 API 권한과 사용량을 사용합니다. [Google 연결 안내](docs/personal-google-accounts.md)를 참고하세요.
+
+JSON 없는 로그인은 **Google 로그인 · Gemini CLI → Google로 로그인**을 선택합니다.
+기본 모델은 `auto`이며 회사·학교 계정은 프로젝트 설정이 필요할 수 있습니다.
+CLI는 자체 인증 암호화와 로컬 대화·캐시 저장을 사용하므로 앱의 OS 암호화 대화
+저장소와 같지 않습니다. [Gemini CLI 연결 및 저장 경계](docs/personal-gemini-cli.md).
+
+이미지 첨부는 지원 모델의 분석 입력으로 전달할 수 있습니다. **이미지 생성**은
+지원 API 연결에서 별도 이미지 모델을 사용하며 전송 확인과 파일 저장을 제공합니다.
+CLI 로그인 연결에서는 이미지 생성을 지원하지 않습니다. [이미지 지원 범위](docs/personal-images.md).
 
 ## 직접 관리하는 메모리
 
@@ -225,7 +235,7 @@ powershell -NoProfile -File apps/desktop/build-windows.ps1
 | [공개 이력](docs/public-history.md) | 제품 이력을 선별한 이유 |
 | [보안 정책](SECURITY.md) | 비공개 취약점 신고 |
 
-우선 검증 대상은 새 PC 설치와 실제 공급자·계정 연결이며, 특히 Google OAuth의 실제 사용 흐름을 확인해야 합니다. 대화 영속 저장·커넥터 확장·도구 실행은 이후 검토할 수 있는 방향이지 **이번 릴리스의 제공 기능이나 출시 일정 약속이 아닙니다.** 외부 쓰기 작업을 허용하기 전에 권한과 데이터 전달 경계를 설계해야 합니다.
+우선 검증 대상은 새 PC 설치와 실제 공급자·계정 연결이며, 특히 Google 로그인의 실제 사용 흐름을 확인해야 합니다. 앱 대화 영속 저장은 구현되어 있으며 커넥터 확장·도구 실행은 이후 검토할 방향이지 **출시 일정 약속이 아닙니다.** 외부 쓰기 작업을 허용하기 전에 권한과 데이터 전달 경계를 설계해야 합니다.
 
 `docs/`의 이전 구현 기록은 각각의 개발 단계를 설명합니다. 현재 릴리스의 범위는 이 README를 기준으로 하며 과거 시험 개수나 잔여 작업 목록은 현재 지원표가 아닙니다.
 

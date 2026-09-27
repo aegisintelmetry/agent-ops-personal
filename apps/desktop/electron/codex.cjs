@@ -80,7 +80,8 @@ class CodexConnection {
     child.stdout.on("data", chunk => {
       if (this.child !== child) return;
       buffer += chunk;
-      if (Buffer.byteLength(buffer) > 4 * 1024 * 1024) return this.stop("Codex 응답 크기를 초과했습니다.");
+      // User-message events may echo approved image input; assistant text keeps its own cap.
+      if (Buffer.byteLength(buffer) > (this.active?.eventLimit || 4 * 1024 * 1024)) return this.stop("Codex 응답 크기를 초과했습니다.");
       let end;
       while ((end = buffer.indexOf("\n")) !== -1) {
         const line = buffer.slice(0, end); buffer = buffer.slice(end + 1);
@@ -194,10 +195,10 @@ class CodexConnection {
   async complete(messages, model) {
     messages = require('./transmission-policy.cjs').prepareMessages(messages, { ErrorType: PersonalError });
     if (this.active || this.loginId) throw new PersonalError("진행 중인 요청을 먼저 완료해 주세요.");
-    if (!Array.isArray(messages) || !messages.length || messages.length > 24 || messages.some(row => !row || !["user", "assistant"].includes(row.role) || typeof row.content !== "string" || !row.content.trim()) || JSON.stringify(messages).length > 100000) throw new PersonalError("대화 입력이 올바르지 않습니다.");
     if (typeof model !== "string" || !model || model.length > 200) throw new PersonalError("Codex 모델을 선택해 주세요.");
     // Reserve before awaiting auth so a second caller cannot start another turn.
-    const active = { threadId: null, text: "", reject: () => {}, resolve: () => {} };
+    const eventLimit = 4 * 1024 * 1024 + messages.reduce((sum, message) => sum + (message.images || []).reduce((size, image) => size + image.length, 0), 0);
+    const active = { threadId: null, text: "", eventLimit, reject: () => {}, resolve: () => {} };
     this.active = active;
     let timer;
     try {
@@ -210,7 +211,11 @@ class CodexConnection {
       // Attach rejection handling before turn/start to handle early completion/cancellation.
       result.catch(() => {});
       timer = setTimeout(() => this.stop("Codex 응답 시간이 초과되었습니다."), 120000);
-      await this.request("turn/start", { threadId: active.threadId, input: [{ type: "text", text: JSON.stringify(messages.map(({ role, content }) => ({ role, content }))), text_elements: [] }] });
+      const input = messages.some(message => message.images?.length) ? messages.flatMap(({ role, content, images }) => [
+        { type: 'text', text: JSON.stringify({ role, content }), text_elements: [] },
+        ...(images || []).map(url => ({ type: 'image', url })),
+      ]) : [{ type: 'text', text: JSON.stringify(messages.map(({ role, content }) => ({ role, content }))), text_elements: [] }];
+      await this.request("turn/start", { threadId: active.threadId, input });
       return await result;
     } finally {
       clearTimeout(timer);

@@ -61,6 +61,16 @@ def third_party_notices(app=APP, python_root=None):
                     and metadata.get('repository', {}).get('url') == package.get('repository', {}).get('url') == 'git+https://github.com/Brooooooklyn/canvas.git'
                     and metadata.get('optionalDependencies', {}).get(package['name']) == package['version']):
                 licenses = [parent / 'LICENSE']
+        # node-pty publishes its Windows binary separately from the shared MIT license.
+        if not licenses and (package.get('name'), package.get('version'), package.get('license')) == ('@lydell/node-pty-win32-x64', '1.1.0', 'MIT'):
+            parent = app / 'node_modules/@lydell/node-pty'
+            metadata = json.loads((parent / 'package.json').read_text(encoding='utf-8'))
+            if (metadata.get('name') == '@lydell/node-pty'
+                    and metadata.get('version') == package['version']
+                    and metadata.get('license') == 'MIT'
+                    and metadata.get('repository', {}).get('url') == package.get('repository', {}).get('url') == 'git://github.com/lydell/node-pty.git'
+                    and metadata.get('optionalDependencies', {}).get(package['name']) == package['version']):
+                licenses = [parent / 'LICENSE']
         if not licenses:
             raise ValueError(f'Missing third-party license: {relative}')
         for file in sorted(licenses):

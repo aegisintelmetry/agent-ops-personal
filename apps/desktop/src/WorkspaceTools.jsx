@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { Download, FileText, Files, Plus, X, Copy, Pencil } from 'lucide-react';
+import { Download, FileText, Files, Plus, X, Copy, Pencil, Image } from 'lucide-react';
 import { useI18n } from './Language';
-import { readSource, SOURCE_LIMIT, SOURCE_COUNT, sessionArtifacts, artifactName } from './workspace.mjs';
+import { readSource, SOURCE_LIMIT, SOURCE_COUNT, sessionArtifacts, artifactName, defaultImageModel, imageGenerationAvailable } from './workspace.mjs';
 import RunSummary from './RunSummary';
 const DocumentPreview = lazy(() => import('./DocumentPreview'));
 
@@ -13,8 +13,14 @@ const labels = {
   source_content: ['비어 있거나 읽을 수 없는 파일입니다. 문서는 12,000자·PDF 100쪽 이내여야 합니다. 암호화 문서와 스캔 PDF는 지원하지 않습니다.', 'Empty, unreadable or oversized file. Documents: 12,000 characters, PDFs: 100 pages. Encrypted documents and scanned PDFs are not supported.'],
   source_timeout: ['문서 읽기 시간이 초과되었습니다.', 'Document reading timed out.'], source_busy: ['문서를 읽고 있습니다.', 'Reading a document.'],
   source_limit: ['소스는 최대 5개, 전체 12,000자까지 추가할 수 있습니다.', 'Sources are limited to 5 files and 12,000 characters total.'],
-  sent: ['첨부 텍스트는 메시지 전송 시 선택한 모델에 전달됩니다.', 'Attached text is sent to the selected model when you send.'],
-  image_local: ['이미지는 로컬 미리보기 전용입니다. 모델 전송 전 이미지를 제거해 주세요.', 'Images are local previews only. Remove images before sending to the model.'],
+  sent: ['첨부 자료는 전송 시 선택한 모델에 전달됩니다.', 'Attachments are sent to the selected model when you send.'],
+  image: ['이미지 생성', 'Generate image'], imageModel: ['이미지 모델 ID', 'Image model ID'],
+  image_invalid: ['이미지를 읽을 수 없습니다. PNG·JPEG·WebP 파일과 크기를 확인해 주세요.', 'Cannot read the image. Check the PNG, JPEG or WebP file and size.'],
+  image_prompt_only: ['이미지 생성에는 텍스트 자료만 사용할 수 있습니다. 이미지 첨부는 제거해 주세요.', 'Image generation accepts text sources only. Remove image attachments.'],
+  image_unsupported: ['이 연결은 이미지 생성을 지원하지 않습니다. OpenAI·Gemini 또는 이미지 API를 지원하는 연결을 선택해 주세요.', 'This connection does not support image generation. Select OpenAI, Gemini or an image-compatible API.'],
+  image_missing: ['유효한 이미지가 반환되지 않았습니다. 이미지 모델·권한·응답 크기(4MB)를 확인해 주세요.', 'No valid image returned. Check the image model, access and 4MB response limit.'],
+  image_notice: ['이미지 전송 확인 필요 · 민감 정보 자동 검사 없음', 'Image transmission requires confirmation · no automatic sensitive-content scan'],
+  generated: ['생성 이미지', 'Generated image'], attached: ['첨부 이미지', 'Attached image'],
   render: ['미리보기', 'Preview'], raw: ['원문', 'Source'], copy: ['내용 복사', 'Copy content'], copied: ['복사됨', 'Copied'], revise: ['이 문서 수정 요청', 'Request a revision'],
   revision: ['이 문서를 다음과 같이 수정해 주세요:', 'Revise this document as follows:'],
   reading: ['자료 읽는 중', 'Reading sources'], folderAccess: ['폴더 자동 읽기 없음', 'No automatic folder access'],
@@ -29,7 +35,23 @@ export function useWorkspaceText() {
   return key => labels[key]?.[language === 'en' ? 1 : 0] || key;
 }
 
-export function WorkspaceInputs({ session, disabled, onChange, onReading }) {
+export function MessageImages({ row }) {
+  const w = useWorkspaceText();
+  const [notice, setNotice] = useState('');
+  const [saving, setSaving] = useState(false);
+  if (!row.images?.length) return null;
+  return <div className="workspace-message-images">{row.images.map((image, index) => <figure key={index}>
+    <img src={image} alt={w(row.role === 'assistant' ? 'generated' : 'attached')} />
+    {row.role === 'assistant' && <button type="button" className="icon-button" title={w('save')} aria-label={w('save')} disabled={saving} onClick={async () => {
+      setSaving(true); setNotice('');
+      try { const result = await window.btk.personal.exportImage({ name: `image-${index + 1}`, image }); if (result.saved) setNotice(w('saved')); }
+      catch { setNotice(w('exportError')); }
+      finally { setSaving(false); }
+    }}><Download size={17} /></button>}
+  </figure>)}{notice && <small role="status">{notice}</small>}</div>;
+}
+
+export function WorkspaceInputs({ state, session, disabled, onChange, onReading }) {
   const w = useWorkspaceText();
   const picker = useRef(null);
   const [error, setError] = useState('');
@@ -51,15 +73,17 @@ export function WorkspaceInputs({ session, disabled, onChange, onReading }) {
   return <div className="workspace-inputs" onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (!disabled && !reading) attach(Array.from(event.dataTransfer.files || [])); }}>
     <div className="workspace-options">
       <label><FileText size={15} /><span>{w('output')}</span><select aria-label={w('output')} disabled={disabled || reading} value={session.output || 'chat'} onChange={event => onChange({ output: event.target.value })}>
-        {['chat', 'markdown', 'text'].map(value => <option key={value} value={value}>{w(value)}</option>)}
+        {['chat', 'markdown', 'text', 'image'].map(value => <option key={value} value={value}>{w(value)}</option>)}
       </select></label>
       <button type="button" className="workspace-add" disabled={disabled || reading || sources.length >= SOURCE_COUNT} title={w('source_type')} onClick={() => picker.current?.click()}><Plus size={15} />{w('source')}<small>{sources.length || ''}</small></button>
       <input ref={picker} type="file" multiple accept=".txt,.md,.csv,.json,.pdf,.docx,.png,.jpg,.jpeg,.webp" aria-label={w('add')} hidden disabled={disabled || reading} onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ''; attach(files); }} />
     </div>
+    {session.output === 'image' && <label className="workspace-image-model"><Image size={15} /><span>{w('imageModel')}</span><input aria-label={w('imageModel')} maxLength={200} disabled={disabled} value={session.imageModel ?? defaultImageModel(state)} onChange={event => onChange({ imageModel: event.target.value })} /></label>}
+    {session.output === 'image' && !imageGenerationAvailable(state) && <p className="workspace-source-error" role="alert">{w('image_unsupported')}</p>}
     {sources.length > 0 && <><ul className="workspace-source-chips">{sources.map(source => <li key={source.id}><FileText size={14} /><span title={source.name}>{source.name}</span><button type="button" className="icon-button" title={w('remove')} aria-label={`${w('remove')}: ${source.name}`} disabled={disabled || reading} onClick={() => onChange({ sources: sources.filter(item => item.id !== source.id) })}><X size={13} /></button></li>)}</ul><small className="workspace-source-notice">{w('sent')}</small></>}
     {error && <p className="workspace-source-error" role="alert">{error}</p>}
     {reading && <small role="status">{w('reading')}</small>}
-    {sources.some(source => source.image) && <p className="workspace-source-notice" role="status">{w('image_local')}</p>}
+    {sources.some(source => source.image) && <p className="workspace-source-notice" role="status">{w('image_notice')}</p>}
   </div>;
 }
 
@@ -77,7 +101,9 @@ export function WorkspacePanel({ state, session, slack, onConnectors, onClose, o
   async function download() {
     setSaving(true); setNotice('');
     try {
-      const result = await window.btk.personal.exportDocument({ name: artifactName(row, index), content: row.content });
+      const result = row.output === 'image'
+        ? await window.btk.personal.exportImage({ name: `image-${index + 1}`, image: row.images[0] })
+        : await window.btk.personal.exportDocument({ name: artifactName(row, index), content: row.content });
       if (result.saved) setNotice(`${w('saved')}: ${result.name}`);
     } catch { setNotice(w('exportError')); }
     finally { setSaving(false); }
@@ -87,17 +113,18 @@ export function WorkspacePanel({ state, session, slack, onConnectors, onClose, o
     <div className="workspace-panel-tabs" role="tablist" aria-label={w('results')}>{['results', 'source', 'summary'].map(value => <button type="button" role="tab" id={`workspace-tab-${value}`} aria-controls="workspace-tab-content" aria-selected={tab === value} key={value} onClick={() => setTab(value)}>{w(value)}</button>)}</div>
     <div id="workspace-tab-content" role="tabpanel" aria-labelledby={`workspace-tab-${tab}`} className="workspace-panel-content">
       {tab === 'summary' ? <RunSummary state={state} session={session} slack={slack} onConnectors={onConnectors} /> : tab === 'source' ? <>
-        {!session.sources?.length ? <p className="workspace-panel-empty">{w('noSources')}</p> : session.sources.map(source => <details className="workspace-source-detail" key={source.id}><summary>{source.name}</summary>{source.image ? <><img className="workspace-source-image" src={source.image} alt={source.name} /><p>{w('image_local')}</p></> : <pre>{source.text}</pre>}</details>)}
+        {!session.sources?.length ? <p className="workspace-panel-empty">{w('noSources')}</p> : session.sources.map(source => <details className="workspace-source-detail" key={source.id}><summary>{source.name}</summary>{source.image ? <img className="workspace-source-image" src={source.image} alt={source.name} /> : <pre>{source.text}</pre>}</details>)}
       </> : row ? <>
         <div className="workspace-artifact-toolbar"><select aria-label={w('results')} value={row.id} disabled={saving} onChange={event => { setChosen(event.target.value); setNotice(''); }}>{artifacts.map((item, i) => <option key={item.id} value={item.id}>{artifactName(item, i)}</option>)}</select><button type="button" className="icon-button" title={w('save')} aria-label={w('save')} disabled={saving} onClick={download}><Download size={17} /></button></div>
         {notice && <p role="status">{notice}</p>}
         {row.state === 'partial' && <p role="status">{w('partial')}</p>}
-        <div className="workspace-document-controls">
+        {row.output === 'image' ? <img className="workspace-generated-image" src={row.images?.[0]} alt={w('generated')} /> : <><div className="workspace-document-controls">
           {row.output === 'markdown' && <div className="workspace-view-switch" role="group" aria-label={w('render')}><button type="button" aria-pressed={!raw} onClick={() => setRaw(false)}>{w('render')}</button><button type="button" aria-pressed={raw} onClick={() => setRaw(true)}>{w('raw')}</button></div>}
           <button className="icon-button" type="button" title={w('copy')} aria-label={w('copy')} onClick={async () => { try { await window.btk.personal.copyDocument(row.content); setNotice(w('copied')); } catch { setNotice(w('exportError')); } }}><Copy size={16} /></button>
           <button className="icon-button" type="button" title={w('revise')} aria-label={w('revise')} disabled={disabled || !onRevise || Boolean(session.draft) || row.content.length > 11000} onClick={() => onRevise(`${w('revision')}\n\n\n---\n${row.content}`)}><Pencil size={16} /></button>
         </div>
         {row.output === 'markdown' && !raw ? <Suspense fallback={<pre className="workspace-document">{row.content}</pre>}><DocumentPreview content={row.content} label={w('render')} /></Suspense> : <pre className="workspace-document" aria-label={w('preview')}>{row.content}</pre>}
+        </>}
       </> : <div className="workspace-panel-empty"><FileText size={28} /><p>{w('empty')}</p></div>}
     </div>
   </aside>;

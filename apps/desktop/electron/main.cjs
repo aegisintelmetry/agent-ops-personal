@@ -1,11 +1,12 @@
 require("./stdio.cjs").protectStdio();
-const { app, BrowserWindow, ipcMain, session, dialog, safeStorage, shell, clipboard } = require("electron");
+const { app, BrowserWindow, ipcMain, session, dialog, safeStorage, shell, clipboard, nativeImage } = require("electron");
 const { CodexConnection } = require("./codex.cjs");
 const { PersonalError } = require("./personal.cjs");
 const { AgentProfiles } = require("./agents.cjs");
 const { TeamCoordinator } = require('./team.cjs');
 const { KnowledgeStore, enrich } = require('./knowledge.cjs');
 const { GoogleAccounts } = require('./google-accounts.cjs');
+const { GeminiCli } = require('./gemini-cli.cjs');
 const fs = require('node:fs');
 const { SlackConnector } = require("./slack.cjs");
 const path = require("node:path");
@@ -14,7 +15,15 @@ const { Bridge, METHODS } = require("./bridge.cjs");
 const { trustedFrame, bundledResource } = require("./security.cjs");
 const { UiPreferences } = require('./preferences.cjs');
 const { DesktopUpdates } = require('./updates.cjs');
-const { exportDocument } = require('./workspace-export.cjs');
+const { exportDocument, exportImage } = require('./workspace-export.cjs');
+const { prepareMessages } = require('./transmission-policy.cjs');
+const { imageData, OUTPUT_LIMIT } = require('./image-data.cjs');
+function validateImage(value, limit) {
+  const { bytes } = imageData(value, limit);
+  const decoded = nativeImage.createFromBuffer(bytes);
+  const { width, height } = decoded.getSize();
+  if (decoded.isEmpty() || width * height > 16000000) throw new PersonalError('image_invalid');
+}
 const { WorkspaceStore } = require('./workspace-store.cjs');
 const { WorkspaceImporter } = require('./workspace-import.cjs');
 
@@ -38,6 +47,7 @@ let knowledge;
 let workspace;
 const workspaceImporter = new WorkspaceImporter();
 let googleAccounts;
+let geminiCli;
 let updates;
 let personalDialogActive = false;
 let t = text => text;
@@ -63,7 +73,8 @@ else {
       const relative = path.relative(path.resolve(__dirname, "../../.."), directory);
       if (!relative.startsWith(".." + path.sep) && !path.isAbsolute(relative)) throw new Error();
       googleAccounts = new GoogleAccounts({ directory, safeStorage, openExternal: url => shell.openExternal(url) });
-      agents = new AgentProfiles({ directory, safeStorage, googleAccounts });
+      geminiCli = new GeminiCli({ directory });
+      agents = new AgentProfiles({ directory, safeStorage, googleAccounts, geminiCli });
       knowledge = new KnowledgeStore({ directory, safeStorage });
       workspace = new WorkspaceStore({ directory, safeStorage });
       personal = agents.service;
@@ -103,6 +114,25 @@ else {
       const snapshot = knowledge.snapshot(id, true);
       return { model: state.model, complete: messages => { const input = enrich(messages, snapshot, objective); return connection ? connection.complete(input, state.model) : service.complete(input); }, cancel: () => connection ? connection.cancel() : service.cancel(), close: () => connection?.stop() };
     } });
+    for (const method of ['state', 'login', 'cancelLogin', 'logout', 'model']) ipcMain.handle(`btk:gemini:${method}`, async (event, params) => {
+      if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('Untrusted request');
+      try {
+        if (params?.agentId !== agents.data.selected || personal.data.connection !== 'gemini-cli') throw new PersonalError('대화의 에이전트가 변경되었습니다. 선택 상태를 확인해 주세요.');
+        if (method === 'state') return geminiCli.state();
+        personal.idle();
+        if (team.active || personalDialogActive || codex.loginId || googleAccounts.pending) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
+        if (method === 'cancelLogin') return await geminiCli.cancelLogin();
+        if (geminiCli.pending) throw new PersonalError('진행 중인 로그인을 완료하거나 취소해 주세요.');
+        if (method === 'login') return geminiCli.login();
+        if (method === 'model') return agents.state(personal.geminiModel(params.model));
+        personalDialogActive = true;
+        try {
+          const answer = await dialog.showMessageBox(window, { type: 'warning', title: t('로그아웃'), buttons: [t('취소'), t('로그아웃')], defaultId: 0, cancelId: 0,
+            message: t('공유 Gemini 계정에서 로그아웃할까요?'), detail: t('이 계정을 사용하는 모든 에이전트의 Gemini 연결이 해제됩니다.') });
+          return answer.response === 1 ? await geminiCli.logout() : geminiCli.state();
+        } finally { personalDialogActive = false; }
+      } catch (error) { throw new Error(error instanceof PersonalError ? error.message : 'Gemini CLI 요청을 처리하지 못했습니다.'); }
+    });
     const googleState = () => {
       const state = googleAccounts.state();
       return { ...state, accounts: state.accounts.map(account => ({ ...account, agents: agents.data.agents.filter(agent => {
@@ -116,7 +146,7 @@ else {
         if (params?.agentId !== agents.data.selected) throw new PersonalError('대화의 에이전트가 변경되었습니다. 선택 상태를 확인해 주세요.');
         if (method === 'state') return googleState();
         personal.idle();
-        if (team.active || personalDialogActive || codex.loginId) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
+        if (team.active || personalDialogActive || codex.loginId || geminiCli.pending) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
         if (method === 'cancelLogin') { googleAccounts.cancelLogin(); return googleState(); }
         if (method === 'reopenLogin') { googleAccounts.reopenLogin(params.id); return googleState(); }
         if (googleAccounts.pending) throw new PersonalError('진행 중인 로그인을 완료하거나 취소해 주세요.');
@@ -147,7 +177,7 @@ else {
       if (params?.agentId !== agents.data.selected) throw new PersonalError('대화의 에이전트가 변경되었습니다. 선택 상태를 확인해 주세요.');
       if (method === 'read') return knowledge.state(agents.data.selected);
       personal.idle();
-      if (team.active || personalDialogActive || codex.loginId || googleAccounts.pending) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
+      if (team.active || personalDialogActive || codex.loginId || googleAccounts.pending || geminiCli.pending) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
       if (method === 'prompt') return knowledge.prompt(agents.data.selected, params.value);
       if (method === 'save') return knowledge.upsert(agents.data.selected, params.record);
       return knowledge.remove(agents.data.selected, params.id);
@@ -158,7 +188,7 @@ else {
       if (method === 'configuration') return agents.teamState();
       if (method === 'cancel') return team.cancel();
       personal.idle();
-      if (personalDialogActive || codex.loginId || googleAccounts.pending) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
+      if (personalDialogActive || codex.loginId || googleAccounts.pending || geminiCli.pending) throw new PersonalError('진행 중인 요청을 먼저 중단해 주세요.');
       if (team.active) throw new PersonalError('팀 작업이 진행 중입니다.');
       if (method === 'clear') return team.clear();
       if (method === 'configure') return agents.configureTeam(params);
@@ -172,13 +202,13 @@ else {
       } finally { personalDialogActive = false; }
       return team.start(params, agents.data.agents);
     });
-    for (const method of ["state", "agent_create", "agent_select", "agent_rename", "mode", "connection", "codex_state", "codex_login", "codex_cancelLogin", "codex_logout", "codex_models", "codex_limits", "codex_model", "save", "removeKey", "folder", "export", "copy", "test", "chat", "cancel", "slack_state", "slack_save", "slack_enable", "slack_remove", "slack_test", "slack_channels", "slack_cancel"]) {
+    for (const method of ["state", "agent_create", "agent_select", "agent_rename", "mode", "connection", "codex_state", "codex_login", "codex_cancelLogin", "codex_logout", "codex_models", "codex_limits", "codex_model", "save", "removeKey", "folder", "export", "exportImage", "copy", "test", "chat", "generateImage", "cancel", "slack_state", "slack_save", "slack_enable", "slack_remove", "slack_test", "slack_channels", "slack_cancel"]) {
       ipcMain.handle(`btk:personal:${method}`, async (event, params) => {
         if (!trustedFrame(event, window, entry)) throw new Error("신뢰할 수 없는 요청입니다.");
         if (personalFailure) throw new Error("개인용 보안 설정을 읽지 못했습니다. 저장 위치와 기존 설정을 확인해 주세요.");
         try {
           if (method === "state") return agents.state();
-          if (googleAccounts.pending) throw new PersonalError('진행 중인 로그인을 완료하거나 취소해 주세요.');
+          if (googleAccounts.pending || geminiCli.pending) throw new PersonalError('진행 중인 로그인을 완료하거나 취소해 주세요.');
           if (team.active) throw new PersonalError('팀 작업이 진행 중입니다.');
           if (personalDialogActive) throw new PersonalError("열린 확인 창을 먼저 닫아 주세요.");
           if (method === "mode") {
@@ -237,10 +267,13 @@ else {
               return agents.state(selection.canceled ? personal.state() : personal.workspace(selection.filePaths[0]));
             } finally { personalDialogActive = false; }
           }
-          if (method === 'export') {
+          if (method === 'export' || method === 'exportImage') {
             personal.idle();
             personalDialogActive = true;
-            try { return await exportDocument(params, options => dialog.showSaveDialog(window, options)); }
+            try {
+              if (method === 'exportImage') { validateImage(params?.image, OUTPUT_LIMIT); return await exportImage(params, options => dialog.showSaveDialog(window, options)); }
+              return await exportDocument(params, options => dialog.showSaveDialog(window, options));
+            }
             finally { personalDialogActive = false; }
           }
           if (method === 'copy') {
@@ -254,7 +287,7 @@ else {
             let answer;
             try {
               answer = await dialog.showMessageBox(window, { type: "question", title: t("모델 연결 시험"), buttons: [t("취소"), t("시험")], defaultId: 0, cancelId: 0,
-                message: t("저장된 모델로 시험 요청을 보낼까요?"), detail: personal.data.connection === "codex" ? t("ChatGPT 구독의 Codex 사용 한도가 소비됩니다. 작업 폴더는 전송하지 않습니다.") : `${personal.data.endpoint}\n${personal.data.model}\n${t("선택한 주소로 요청이 전송됩니다. 외부 공급자는 API 사용 요금이 발생할 수 있습니다. 작업 폴더는 전송하지 않습니다.")}` });
+                message: t("저장된 모델로 시험 요청을 보낼까요?"), detail: personal.data.connection === 'gemini-cli' ? t('Gemini CLI 계정의 사용 한도가 소비됩니다. 작업 폴더는 전송하지 않습니다.') : personal.data.connection === "codex" ? t("ChatGPT 구독의 Codex 사용 한도가 소비됩니다. 작업 폴더는 전송하지 않습니다.") : `${personal.state().endpoint}\n${personal.state().model}\n${t("선택한 주소로 요청이 전송됩니다. 외부 공급자는 API 사용 요금이 발생할 수 있습니다. 작업 폴더는 전송하지 않습니다.")}` });
             } finally { personalDialogActive = false; }
             if (answer.response !== 1) throw new PersonalError("연결 시험을 취소했습니다.");
             const result = await complete([{ role: "user", content: "Reply with OK." }], { probe: true });
@@ -262,8 +295,25 @@ else {
           }
           if (params?.agentId !== agents.data.selected) throw new PersonalError("대화의 에이전트가 변경되었습니다. 선택 상태를 확인해 주세요.");
           const agent = agents.state();
-          const result = await complete(params?.messages);
-          return { ...result, agentId: agent.agentId, agentName: agent.agentName, model: agent.model };
+          const generating = method === 'generateImage';
+          const messages = prepareMessages(params?.messages, { ErrorType: PersonalError });
+          const images = messages.flatMap(message => message.images || []);
+          const imageModel = params?.imageModel;
+          if (generating && (typeof imageModel !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(imageModel) || agent.connection === 'codex' || !['openai', 'gemini', 'compatible', 'local'].includes(agent.provider))) throw new PersonalError('image_unsupported');
+          if (generating && (images.length || messages.length !== 1)) throw new PersonalError('image_prompt_only');
+          for (const image of images) validateImage(image);
+          if (generating || images.length) {
+            personal.idle(); personalDialogActive = true;
+            try {
+              const answer = await dialog.showMessageBox(window, { type: 'question', title: t('이미지 요청 확인'), buttons: [t('취소'), t('계속')], defaultId: 0, cancelId: 0,
+                message: t(generating ? '선택한 모델로 이미지를 생성할까요?' : '첨부 이미지를 선택한 모델에 전송할까요?'),
+                detail: `${agent.endpoint}\n${generating ? imageModel : agent.model}\n${t('이미지 수')}: ${images.length}\n${t('공급자 사용량 또는 API 요금이 발생합니다. 이미지 내부의 민감 정보는 자동 검사하지 않습니다.')}` });
+              if (answer.response !== 1) throw new PersonalError('요청을 취소했습니다.');
+            } finally { personalDialogActive = false; }
+          }
+          const result = await complete(messages, generating ? { imageModel } : undefined);
+          for (const image of result.images || []) validateImage(image, OUTPUT_LIMIT);
+          return { ...result, agentId: agent.agentId, agentName: agent.agentName, model: generating ? imageModel : agent.model };
         } catch (error) {
           throw new Error(error instanceof PersonalError ? error.message : "개인용 요청을 처리하지 못했습니다.");
         }
@@ -315,7 +365,7 @@ else {
       enabled: app.isPackaged && process.platform === 'win32',
       assertIdle: () => {
         personal?.idle();
-        if (personalFailure || personal?.data.mode !== 'personal' || setupActive || bridge.pending.size || team?.active || personalDialogActive || codex?.loginId || googleAccounts?.pending) throw new Error(t('진행 중인 작업이나 로그인을 먼저 완료해 주세요.'));
+        if (personalFailure || personal?.data.mode !== 'personal' || setupActive || bridge.pending.size || team?.active || personalDialogActive || codex?.loginId || googleAccounts?.pending || geminiCli?.pending) throw new Error(t('진행 중인 작업이나 로그인을 먼저 완료해 주세요.'));
       },
       confirmInstall: async () => {
         personalDialogActive = true;
@@ -373,6 +423,7 @@ else {
     personal?.cancel();
     team?.cancel();
     googleAccounts?.stop();
+    geminiCli?.stop();
     codex?.stop();
     slack?.cancel();
     bridge.stop();

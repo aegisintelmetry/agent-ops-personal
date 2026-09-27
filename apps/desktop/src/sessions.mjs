@@ -2,15 +2,22 @@ export const MAX_SESSIONS = 20;
 export function newSession(id) { return { id, title: "새 대화", messages: [], draft: "" }; }
 export function initialSessions(id) { return { selected: id, items: [newSession(id)] }; }
 
-export function conversationInput(messages, text) {
-  const input = [{ role: 'user', content: text }];
-  let length = JSON.stringify(input).length;
-  const history = messages.filter(row => (row.role === 'user' && !['failed', 'pending'].includes(row.state)) || (row.role === 'assistant' && row.state === 'completed')).slice(-22);
+export function conversationInput(messages, text, images = []) {
+  const input = [{ role: 'user', content: text, ...(images.length ? { images } : {}) }];
+  const attached = new Set(images);
+  let imageCount = images.length;
+  let length = JSON.stringify([{ role: 'user', content: text }]).length;
+  const history = messages.filter(row => row.output !== 'image' && ((row.role === 'user' && !['failed', 'pending'].includes(row.state)) || (row.role === 'assistant' && row.state === 'completed'))).slice(-22);
   // Leave room for role preferences and retrieved memory in the native request limit.
-  for (const { role, content, modelContent } of history.reverse()) {
+  for (const { role, content, modelContent, images: previous = [] } of history.reverse()) {
     const message = { role, content: modelContent || content };
     length += JSON.stringify(message).length + 1;
     if (length > 80000) break;
+    const selected = previous.filter(image => !attached.has(image));
+    if (imageCount + selected.length > 5) break;
+    if (selected.length) message.images = selected;
+    imageCount += selected.length;
+    for (const image of selected) attached.add(image);
     input.unshift(message);
   }
   return input;
@@ -41,7 +48,8 @@ export function sessionReducer(state, action) {
     if (action.type === "draft") return { ...item, draft: action.value };
     if (action.type === 'workspace') return { ...item,
       sources: action.value.sources ?? item.sources,
-      output: action.value.output ?? item.output };
+      output: action.value.output ?? item.output,
+      imageModel: action.value.imageModel ?? item.imageModel };
     if (action.type === 'recover') {
       const target = item.messages.find(row => row.id === action.messageId && row.role === 'user' && row.state === 'failed');
       if (!target || !['edit', 'remove'].includes(action.mode) || (action.mode === 'edit' && item.draft)) return item;

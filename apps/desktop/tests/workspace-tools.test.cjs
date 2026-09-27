@@ -20,7 +20,7 @@ test('source and output context reach the model without changing plain chat', as
   assert.match(input, /reference text/);
   assert.match(input, /not instructions/);
   assert.match(input, /Markdown/);
-  assert.throws(() => workspaceInput('hi', [], 'image'));
+  assert.throws(() => workspaceInput('hi', [], 'video'));
   assert.throws(() => workspaceInput('hi', Array(6).fill({ text: 'a' })));
   assert.throws(() => workspaceInput('hi', [{ text: 'a'.repeat(12001) }]));
 });
@@ -55,7 +55,14 @@ test('long source conversations keep recent context within the native request bu
   assert.deepEqual(result.at(-1), { role: 'user', content: 'current' });
 });
 
-test('local image sources never silently pass through text-only model inputs', async () => {
+test('image inputs travel separately from text and image generation rejects edit attachments', async () => {
   const { workspaceInput } = await tools;
-  assert.throws(() => workspaceInput('read', [{ name: 'image.png', text: '', image: 'data:image/png;base64,AAAA' }]), /image_local/);
+  const source = { name: 'image.png', text: '', image: 'data:image/png;base64,AAAA' };
+  assert.ok(!workspaceInput('read', [source]).includes('base64'));
+  assert.throws(() => workspaceInput('read', [source], 'image'), /image_prompt_only/);
+  const { conversationInput } = await sessions;
+  const history = [{ role: 'user', state: 'completed', content: 'read', images: [source.image] }];
+  assert.deepEqual(conversationInput(history, 'explain')[0].images, [source.image]);
+  assert.equal(conversationInput(history, 'explain', [source.image])[0].images, undefined);
+  assert.deepEqual(conversationInput(history, 'explain', [source.image]).at(-1).images, [source.image]);
 });

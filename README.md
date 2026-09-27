@@ -46,7 +46,7 @@ For example, one worker can analyze a proposal while another critiques its assum
 
 ## Install
 
-Download `AEGIS-Agent-Ops-Setup-0.5.16.exe` from the [release page](https://github.com/aegisintelmetry/agent-ops-personal/releases/latest).
+Download `AEGIS-Agent-Ops-Setup-0.5.18.exe` from the [release page](https://github.com/aegisintelmetry/agent-ops-personal/releases/latest).
 
 Starting with 0.5.15, Personal checks for updates automatically. Use **App updates**
 in the sidebar to download, then confirm restart/install. Older versions require
@@ -108,9 +108,21 @@ The app does not browse for evidence, read arbitrary files, or execute generated
 | OpenAI, DeepSeek, Kimi, Gemini | Your own API key |
 | OpenAI-compatible / local endpoints | Explicitly configured endpoint and model |
 | ChatGPT / Codex | Existing per-agent Codex sign-in integration |
+| Google / Gemini CLI | Bundled Google sign-in without API keys or client JSON; one shared account, separate agent models |
 | Gemini API OAuth | Shared Google connections; your own Desktop OAuth client is required |
 
 Provider charges and limits apply. A chat subscription is not interchangeable with API access. Gemini OAuth uses the Google Cloud project's API permissions and usage, not a Gemini web subscription. See the [Google connection guide](docs/personal-google-accounts.md).
+
+For sign-in without client JSON, choose **Google sign-in · Gemini CLI** and click
+**Sign in with Google**. The initial model is `auto`. Company/school accounts may
+require a Cloud project. The CLI uses its own credential encryption and can keep
+local session/cache files, not the app's OS-encrypted chat store.
+[Gemini CLI connection and storage boundaries](docs/personal-gemini-cli.md).
+
+Image attachments now support analysis with compatible vision models. **Generate
+image** uses a separate image model on supported API connections, with native
+transmission confirmation and Save As. CLI login connections do not generate
+images. [Image support and limits](docs/personal-images.md).
 
 ## Memory You Control
 
@@ -230,7 +242,7 @@ See [contributing](CONTRIBUTING.md) and [Windows CI](https://github.com/aegisint
 | [Public history](docs/public-history.md) | Why this repository contains selected product history |
 | [Security policy](SECURITY.md) | Private vulnerability reporting |
 
-Near-term validation priorities are fresh-PC installation and real provider/account flows, particularly Google OAuth. Conversation persistence, broader connectors, and tool execution are possible future work, **not features included in this release or promised release dates**. Permission and data-flow boundaries must be designed before enabling external writes.
+Near-term validation priorities are fresh-PC installation and real provider/account flows, particularly Google sign-in. App conversation persistence is implemented; broader connectors and tool execution remain possible future work, **not promised release dates**. Permission and data-flow boundaries must be designed before enabling external writes.
 
 Older implementation notes in `docs/` describe individual development stages. This README describes the current release; historical test counts and pending items are not a current support matrix.
 

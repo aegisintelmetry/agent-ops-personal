@@ -34,13 +34,15 @@ async function launch() {
     };
   }, clientFile);
   await page.getByLabel('연결 방식', { exact: true }).selectOption('google');
+  await page.getByText('OAuth 클라이언트 미설정', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Google로 로그인', exact: true }).isEnabled(), false);
+  await app.evaluate(({ dialog }) => { dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] }); });
+  await page.getByRole('button', { name: 'OAuth 클라이언트 가져오고 로그인', exact: true }).click();
+  assert.equal(await app.evaluate(() => global.googleFixtureBrowserAttempts), 0);
+  assert.equal((await page.evaluate(() => window.btk.personal.google.state('default'))).accounts.length, 0);
+  await app.evaluate(({ dialog }, file) => { dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [file] }); }, clientFile);
   await page.getByLabel('새 연결 이름').fill('Shared Gemini');
-  await page.getByRole('button', { name: 'OAuth 클라이언트 가져오기' }).click();
-  // Imported-but-unbound accounts must remain selectable after remounting.
-  await page.reload();
-  await page.getByRole('button', { name: '모델 연결', exact: true }).click();
-  await page.getByRole('button', { name: 'Google로 로그인' }).waitFor();
-  await page.getByRole('button', { name: 'Google로 로그인' }).click();
+  await page.getByRole('button', { name: 'OAuth 클라이언트 가져오고 로그인', exact: true }).click();
   await page.getByText('브라우저 로그인 대기 중', { exact: true }).waitFor();
   await page.getByRole('alert').filter({ hasText: '브라우저를 열지 못했습니다.' }).waitFor();
   fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
@@ -61,15 +63,30 @@ async function launch() {
   await page.getByText('설정 저장됨 · 연결 미검증', { exact: true }).waitFor();
   const accountId = await page.evaluate(async () => (await window.btk.personal.state()).accountId);
   assert.ok(accountId);
+  // A disconnected older entry must not hide a usable shared account for a new worker.
+  await page.locator('summary').filter({ hasText: '새 Google 연결' }).click();
+  await page.getByLabel('새 연결 이름').fill('Unconnected fixture');
+  await page.evaluate(() => window.btk.personal.google.import('default', 'Unconnected fixture'));
+  await app.evaluate(({ app }) => {
+    const { GoogleAccounts } = process.mainModule.require(app.getAppPath() + '/electron/google-accounts.cjs');
+    const original = GoogleAccounts.prototype.state;
+    GoogleAccounts.prototype.state = function () {
+      const state = original.call(this);
+      return { ...state, accounts: state.accounts.sort((a, b) => Number(a.connected) - Number(b.connected)) };
+    };
+  });
   const worker = await page.evaluate(async () => window.btk.personal.agents.create('Gemini worker'));
   await page.reload();
   await page.getByLabel('연결 방식', { exact: true }).selectOption('google');
-  await page.getByLabel('연결 계정', { exact: true }).selectOption(accountId);
+  await page.waitForFunction(id => document.querySelector('select[aria-label="연결 계정"]')?.value === id, accountId);
+  assert.equal(await page.getByRole('button', { name: 'Google로 로그인', exact: true }).isEnabled(), true);
+  assert.equal(await page.getByLabel('새 연결 이름').isVisible(), false);
+  assert.equal(await app.evaluate(() => global.googleFixtureBrowserAttempts), 2);
   await page.getByLabel('Gemini 모델 ID', { exact: true }).fill('gemini-worker-fixture');
   await page.getByRole('button', { name: '모델 저장', exact: true }).click();
   await page.getByText('설정 저장됨 · 연결 미검증', { exact: true }).waitFor();
   const accounts = await page.evaluate(async id => window.btk.personal.google.state(id), worker.agentId);
-  assert.equal(accounts.accounts.length, 1); assert.equal(accounts.accounts[0].agents.length, 2);
+  assert.equal(accounts.accounts.length, 2); assert.equal(accounts.accounts.find(a => a.id === accountId).agents.length, 2);
   assert.ok(!JSON.stringify(accounts).includes('fixture-refresh'));
   assert.equal(await page.evaluate(async () => { try { await window.btk.personal.google.model('default', {}); return false; } catch { return true; } }), true);
   await app.evaluate(({ app, dialog }, workerId) => {
@@ -115,5 +132,5 @@ async function launch() {
   await page.getByLabel('Personal message', { exact: true }).fill('Disconnected account');
   assert.equal(await page.getByRole('button', { name: 'Send personal message', exact: true }).isEnabled(), false);
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({ status: 'passed', import: true, mockBrowserLogin: true, browserFailureRecovery: true, pendingSessionRestored: true, sharedMasterWorkerAccount: true, independentModels: true, restart: true, removal: true, widths: [1440, 390], actualProviderRequests: false }));
+  console.log(JSON.stringify({ status: 'passed', emptyAccountState: true, importCancellation: true, importStartsLogin: true, mockBrowserLogin: true, browserFailureRecovery: true, pendingSessionRestored: true, connectedAccountPreferred: true, sharedMasterWorkerAccount: true, independentModels: true, restart: true, removal: true, widths: [1440, 390], actualProviderRequests: false }));
 })().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await app?.close(); fs.rmSync(directory, { recursive: true, force: true }); });

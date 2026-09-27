@@ -3,6 +3,7 @@ const path = require("node:path");
 const { randomUUID } = require("node:crypto");
 const providers = require("./providers.json");
 const { prepareMessages } = require('./transmission-policy.cjs');
+const { openAIContent, geminiContents, generatedImages } = require('./image-data.cjs');
 
 class PersonalError extends Error {}
 const fail = message => { throw new PersonalError(message); };
@@ -24,7 +25,7 @@ function validateModel(input) {
   return { provider: input.provider, endpoint: url.href.replace(/\/+$/, ""), model: input.model.trim(), maxTokens: input.maxTokens };
 }
 
-async function boundedJson(response) {
+async function boundedJson(response, limit = 2 * 1024 * 1024) {
   if (!response.body) fail("모델 응답이 비어 있습니다.");
   const reader = response.body.getReader();
   const chunks = [];
@@ -34,7 +35,7 @@ async function boundedJson(response) {
       const { done, value } = await reader.read();
       if (done) break;
       size += value.length;
-      if (size > 2 * 1024 * 1024) fail("모델 응답 크기가 제한을 초과했습니다.");
+      if (size > limit) fail("모델 응답 크기가 제한을 초과했습니다.");
       chunks.push(Buffer.from(value));
     }
   } finally { await reader.cancel().catch(() => {}); }
@@ -43,8 +44,9 @@ async function boundedJson(response) {
 }
 
 class PersonalService {
-  constructor({ directory, safeStorage, fetchImpl = fetch, timeoutMs = 120000, googleAccounts }) {
+  constructor({ directory, safeStorage, fetchImpl = fetch, timeoutMs = 120000, googleAccounts, geminiCli }) {
     this.googleAccounts = googleAccounts;
+    this.geminiCli = geminiCli;
     this.file = path.join(directory, "personal.json");
     this.safeStorage = safeStorage;
     this.fetch = fetchImpl;
@@ -65,7 +67,9 @@ class PersonalService {
   }
   state() {
     const { mode, provider, endpoint, model, workspace, maxTokens, encryptedKey } = this.data;
-    const connection = ['codex', 'google'].includes(this.data.connection) ? this.data.connection : 'api';
+    const connection = ['codex', 'google', 'gemini-cli'].includes(this.data.connection) ? this.data.connection : 'api';
+    if (connection === 'gemini-cli') return { mode, provider: 'gemini-cli', endpoint: 'Google / Gemini CLI', model: this.data.geminiCliModel || 'auto', connection, workspace,
+      maxTokens, keyConfigured: false, accountConfigured: Boolean(this.geminiCli?.state().connected), secureStorage: this.encryptionAvailable() };
     if (connection === 'google') return { mode, provider: 'gemini', endpoint: 'https://generativelanguage.googleapis.com', model: this.data.googleModel || '', connection, workspace,
       maxTokens: this.data.googleMaxTokens || 1024, accountId: this.data.googleAccountId || '', keyConfigured: false,
       accountConfigured: Boolean(this.googleAccounts?.has(this.data.googleAccountId)), secureStorage: this.encryptionAvailable() };
@@ -87,7 +91,7 @@ class PersonalService {
   idle() { if (this.active || this.connectorActive || this.codexActive) fail("진행 중인 요청을 먼저 중단해 주세요."); }
   connection(value) {
     this.idle();
-    if (!["api", "codex", "google"].includes(value)) fail("지원하지 않는 연결 방식입니다.");
+    if (!["api", "codex", "google", "gemini-cli"].includes(value)) fail("지원하지 않는 연결 방식입니다.");
     return this.write({ ...this.data, connection: value });
   }
   codexModel(model) {
@@ -101,6 +105,12 @@ class PersonalService {
     if (typeof model !== 'string' || !/^gemini-[A-Za-z0-9._-]{1,180}$/.test(model)) fail('Gemini 모델 ID를 확인해 주세요.');
     if (!Number.isInteger(maxTokens) || maxTokens < 64 || maxTokens > 16384) fail('출력 토큰 한도는 64~16384여야 합니다.');
     return this.write({ ...this.data, connection: 'google', googleAccountId: accountId, googleModel: model, googleMaxTokens: maxTokens });
+  }
+  geminiModel(model) {
+    this.idle();
+    if (!this.geminiCli?.state().connected) fail('Google 계정에 먼저 로그인해 주세요.');
+    if (typeof model !== 'string' || !/^(auto|gemini-[A-Za-z0-9._-]{1,180})$/.test(model)) fail('Gemini 모델 ID를 확인해 주세요.');
+    return this.write({ ...this.data, connection: 'gemini-cli', geminiCliModel: model });
   }
   setMode(mode) {
     this.idle();
@@ -133,13 +143,24 @@ class PersonalService {
     } catch { fail("작업 폴더를 확인하지 못했습니다."); }
   }
   cancel() { const active = this.active; active?.abort(); return { cancelled: Boolean(active) }; }
-  async complete(messages, { probe = false } = {}) {
+  async complete(messages, { probe = false, imageModel } = {}) {
     this.idle();
     if (this.data.mode !== "personal") fail("개인용 모드에서만 모델을 호출할 수 있습니다.");
+    if (this.data.connection === 'gemini-cli') {
+      if (imageModel !== undefined) fail('image_unsupported');
+      messages = prepareMessages(messages, { ErrorType: PersonalError });
+      const controller = new AbortController(); this.active = controller;
+      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+      try { return await this.geminiCli.complete(messages, { model: this.data.geminiCliModel || 'auto' }, controller.signal); }
+      finally { clearTimeout(timer); this.active = null; }
+    }
     const google = this.data.connection === 'google';
+    if (imageModel !== undefined && (typeof imageModel !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(imageModel) || probe || this.data.connection === 'codex' || (!google && !['openai', 'gemini', 'compatible', 'local'].includes(this.data.provider)))) fail('image_unsupported');
     const config = google ? { accountId: this.data.googleAccountId, model: this.data.googleModel, maxTokens: this.data.googleMaxTokens } : validateModel(this.data);
     if (google && (!this.googleAccounts?.has(config.accountId) || typeof config.model !== 'string' || !/^gemini-[A-Za-z0-9._-]{1,180}$/.test(config.model) || !Number.isInteger(config.maxTokens) || config.maxTokens < 64 || config.maxTokens > 16384)) fail('Google 계정과 Gemini 모델을 설정해 주세요.');
-    if (!Array.isArray(messages) || messages.length < 1 || messages.length > 24 || messages.some(row => !row || !["user", "assistant"].includes(row.role) || typeof row.content !== "string" || !row.content.trim()) || JSON.stringify(messages).length > 100000) fail("대화 입력이 제한을 초과했거나 올바르지 않습니다.");
+    messages = prepareMessages(messages, { ErrorType: PersonalError });
+    if (imageModel && (messages.length !== 1 || messages[0].role !== 'user' || messages[0].images?.length)) fail('image_prompt_only');
+    if (imageModel) config.model = imageModel;
     let key = "";
     if (!google && this.data.encryptedKey) {
       if (!this.encryptionAvailable()) fail("OS 보안 저장소를 사용할 수 없습니다.");
@@ -153,13 +174,19 @@ class PersonalService {
     let timedOut = false;
     const timer = setTimeout(() => { timedOut = true; controller.abort(); }, this.timeoutMs);
     try {
-      if (google) return await this.googleAccounts.complete(messages, config, controller.signal, probe);
-      const body = { model: config.model, messages: messages.map(({ role, content }) => ({ role, content })), stream: false };
+      if (google) return await this.googleAccounts.complete(messages, config, controller.signal, probe, Boolean(imageModel));
+      let body = { model: config.model, messages: messages.map(message => ({ role: message.role, content: openAIContent(message) })), stream: false };
       const preset = providers.find(item => item.id === config.provider);
       body[preset.tokenField] = probe ? Math.min(preset.probeTokens, config.maxTokens) : config.maxTokens;
-      const response = await this.fetch(config.endpoint + "/chat/completions", {
+      let url = config.endpoint + '/chat/completions';
+      if (imageModel) {
+        url = config.provider === 'gemini' ? `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(imageModel)}:generateContent` : config.endpoint + '/images/generations';
+        body = config.provider === 'gemini' ? { contents: geminiContents(messages), generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } }
+          : { model: imageModel, prompt: messages[0].content, n: 1, size: '1024x1024', output_format: 'png' };
+      }
+      const response = await this.fetch(url, {
         method: "POST", redirect: "error", signal: controller.signal,
-        headers: { "Content-Type": "application/json", ...(key ? { Authorization: `Bearer ${key}` } : {}) },
+        headers: { "Content-Type": "application/json", ...(key ? imageModel && config.provider === 'gemini' ? { 'x-goog-api-key': key } : { Authorization: `Bearer ${key}` } : {}) },
         body: JSON.stringify(body),
       });
       if (!response.ok) {
@@ -167,8 +194,16 @@ class PersonalService {
         const detail = { 401: "API 키를 확인해 주세요.", 403: "모델 접근 권한을 확인해 주세요.", 404: "API 주소와 모델 ID를 확인해 주세요.", 429: "요청 한도 또는 잔액을 확인해 주세요." }[response.status] || "모델 서버 요청에 실패했습니다.";
         fail(`HTTP ${response.status}: ${detail}`);
       }
-      const result = await boundedJson(response);
+      const result = await boundedJson(response, imageModel ? 6 * 1024 * 1024 : undefined);
       if (controller.signal.aborted) fail(timedOut ? "모델 응답 시간이 초과되었습니다." : "요청을 취소했습니다.");
+      if (imageModel) {
+        let images;
+        try { images = generatedImages(result, config.provider === 'gemini'); } catch { fail('image_missing'); }
+        const usage = {};
+        const count = config.provider === 'gemini' ? result.usageMetadata?.totalTokenCount : result.usage?.total_tokens;
+        if (Number.isSafeInteger(count) && count >= 0) usage.total_tokens = count;
+        return { text: '', images, model: imageModel, usage, status: config.provider === 'gemini' && result.candidates?.[0]?.finishReason !== 'STOP' ? 'partial' : 'completed', checkedAt: new Date().toISOString() };
+      }
       const choice = result.choices?.[0];
       const text = choice?.message?.content;
       if (typeof text !== "string" || !text.trim()) fail("텍스트 응답이 없습니다. 모델 호환성과 출력 한도를 확인해 주세요.");

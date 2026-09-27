@@ -1,8 +1,9 @@
 import { useI18n, LanguageSelect } from "./Language";
 import React, { useEffect, useReducer, useState } from "react";
 import { ArrowUp, Check, CircleAlert, Cpu, FolderOpen, KeyRound, LoaderCircle, MessageSquare, PanelLeft, PanelRight, Pencil, Plug, Plus, Save, Settings2, Shield, Square, Trash2, Workflow, X } from "lucide-react";
-import { WorkspaceInputs, WorkspacePanel, useWorkspaceText } from './WorkspaceTools';
-import { workspaceInput } from './workspace.mjs';
+import { WorkspaceInputs, WorkspacePanel, MessageImages, useWorkspaceText } from './WorkspaceTools';
+import { workspaceInput, defaultImageModel, imageGenerationAvailable } from './workspace.mjs';
+import GeminiCliSettings from './GeminiCliSettings';
 import { useWorkspaceStore } from './useWorkspaceStore';
 import SlackPanel from "./SlackPanel";
 import CodexSettings from "./CodexSettings";
@@ -124,8 +125,8 @@ function AgentEditor({ state, busy, run, onSaved, onRenamed }) {
     </div>
     {tab !== 'model' ? <KnowledgePanel key={`${id}:${tab}`} agentId={id} tab={tab} busy={busy} /> : <>
     <AgentName key={`name:${id}`} state={state} busy={busy} run={run} onSaved={onRenamed} />
-    <div className="personal-connection"><label>{t('연결 방식')}<select aria-label={t('연결 방식')} value={state.connection || 'api'} disabled={busy} onChange={event => { const value = event.target.value; run(async () => onSaved(await native().connection(value))); }}><option value="api">{t('API 키 / 로컬 모델')}</option><option value="codex">{t('ChatGPT 로그인')}</option><option value="google">{t('Google 로그인 · Gemini API')}</option></select></label></div>
-    {state.connection === 'google' ? <GoogleSettings key={`google:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} /> : state.connection === 'codex' ? <CodexSettings key={`codex:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} /> : <ModelSettings key={`model:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} />}
+    <div className="personal-connection"><label>{t('연결 방식')}<select aria-label={t('연결 방식')} value={state.connection || 'api'} disabled={busy} onChange={event => { const value = event.target.value; run(async () => onSaved(await native().connection(value))); }}><option value="api">{t('API 키 / 로컬 모델')}</option><option value="codex">{t('ChatGPT 로그인')}</option><option value="gemini-cli">{t('Google 로그인 · Gemini CLI')}</option><option value="google">{t('Google Cloud API · OAuth 설정')}</option></select></label></div>
+    {state.connection === 'gemini-cli' ? <GeminiCliSettings key={`gemini:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} /> : state.connection === 'google' ? <GoogleSettings key={`google:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} /> : state.connection === 'codex' ? <CodexSettings key={`codex:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} /> : <ModelSettings key={`model:${id}`} state={state} busy={busy} run={run} onSaved={onSaved} />}
     </>}
   </>;
 }
@@ -209,22 +210,26 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
     if (locked || !selected.draft.trim()) return;
     const id = selected.id;
     const text = selected.draft.trim();
+    const generating = selected.output === 'image';
+    const imageModel = selected.imageModel ?? defaultImageModel(state);
+    if (generating && (!imageGenerationAvailable(state) || !imageModel.trim())) { setError(w('image_unsupported')); return; }
+    const images = (selected.sources || []).filter(source => source.image).map(source => source.image);
     const latestRun = { id: crypto.randomUUID(), startedAt: new Date().toISOString(), status: "running" };
     let modelContent;
     try { modelContent = workspaceInput(text, selected.sources, selected.output); }
     catch (e) { setError(w(e.message)); return; }
     dispatch({ type: "run", id, value: latestRun });
-    const messages = conversationInput(selected.messages, modelContent);
+    const messages = generating ? [{ role: 'user', content: modelContent }] : conversationInput(selected.messages, modelContent, images);
     const messageId = crypto.randomUUID();
-    dispatch({ type: "messages", id, value: rows => [...rows, { id: messageId, role: "user", content: text, modelContent, state: "pending" }] });
+    dispatch({ type: "messages", id, value: rows => [...rows, { id: messageId, role: "user", content: text, modelContent, images, output: selected.output || 'chat', state: "pending" }] });
     dispatch({ type: "draft", id, value: "" });
     setChatBusy(true); setError("");
     try {
-      const result = await native().chat(messages, agentId);
+      const result = generating ? await native().generateImage(messages, agentId, imageModel) : await native().chat(messages, agentId);
       dispatch({ type: "run", id, value: { ...latestRun, status: result.status, usage: result.usage, agentId: result.agentId, model: result.model } });
-      dispatch({ type: "messages", id, value: rows => [...rows.map(row => row.id === messageId ? { ...row, state: 'completed' } : row), { id: crypto.randomUUID(), role: "assistant", content: result.text, model: result.model || state.model, state: result.status, usage: result.usage, output: selected.output || 'chat' }] });
+      dispatch({ type: "messages", id, value: rows => [...rows.map(row => row.id === messageId ? { ...row, state: 'completed' } : row), { id: crypto.randomUUID(), role: "assistant", content: result.text, ...(result.images ? { images: result.images } : {}), model: result.model || state.model, state: result.status, usage: result.usage, output: selected.output || 'chat' }] });
     } catch (e) {
-      setError(e.message);
+      setError(w(e.message.match(/image_[a-z_]+$/)?.[0] || e.message));
       dispatch({ type: 'messages', id, value: rows => rows.map(row => row.id === messageId ? { ...row, state: 'failed' } : row) });
       dispatch({ type: "run", id, value: { ...latestRun, status: e.message.includes("요청을 취소했습니다") ? "cancelled" : "failed" } });
     }
@@ -262,11 +267,11 @@ function PersonalApp({ initial, onModeChange, modeBusy, modeError }) {
           <div className="personal-context"><FolderOpen size={15} /><span title={state.workspace}>{state.workspace || t("작업 폴더 미선택")}</span><small>{w('folderAccess')}</small><small className="workspace-storage-state" role="status">{w(storageStatus)}</small></div>
           <div className="personal-transcript" role="log" aria-label={t("개인 대화")}>
             {!selected.messages.length && <div className="personal-empty"><Workflow size={32} className="workspace-logo" /><h1>AEGIS Agent Ops</h1><span>{state.model || t("모델 미연결")}</span></div>}
-            {selected.messages.map(row => <article className={`personal-message ${row.role}`} key={row.id}><strong>{row.role === "user" ? t("나") : row.model || t("에이전트")}</strong><p>{row.content}</p>{row.state === 'failed' && <div className="personal-message-actions"><span>{t('요청 실패 · 후속 전송에서 제외됨')}</span><ButtonIcon label={t('실패한 메시지 수정')} disabled={locked || Boolean(selected.draft)} onClick={() => { dispatch({ type: 'recover', id: selected.id, messageId: row.id, mode: 'edit' }); setError(''); }}><Pencil size={15} /></ButtonIcon><ButtonIcon label={t('실패한 메시지 삭제')} disabled={locked} onClick={() => { dispatch({ type: 'recover', id: selected.id, messageId: row.id, mode: 'remove' }); setError(''); }}><Trash2 size={15} /></ButtonIcon></div>}{row.state === "partial" && <small>{t("응답 불완전")}</small>}{row.usage && <small>{t("토큰")} {row.usage.total_tokens ?? t("미제공")}</small>}</article>)}
+            {selected.messages.map(row => <article className={`personal-message ${row.role}`} key={row.id}><strong>{row.role === "user" ? t("나") : row.model || t("에이전트")}</strong><p>{row.content}</p><MessageImages row={row} />{row.state === 'failed' && <div className="personal-message-actions"><span>{t('요청 실패 · 후속 전송에서 제외됨')}</span><ButtonIcon label={t('실패한 메시지 수정')} disabled={locked || Boolean(selected.draft)} onClick={() => { dispatch({ type: 'recover', id: selected.id, messageId: row.id, mode: 'edit' }); setError(''); }}><Pencil size={15} /></ButtonIcon><ButtonIcon label={t('실패한 메시지 삭제')} disabled={locked} onClick={() => { dispatch({ type: 'recover', id: selected.id, messageId: row.id, mode: 'remove' }); setError(''); }}><Trash2 size={15} /></ButtonIcon></div>}{row.state === "partial" && <small>{t("응답 불완전")}</small>}{row.usage && <small>{t("토큰")} {row.usage.total_tokens ?? t("미제공")}</small>}</article>)}
             {chatBusy && <div className="personal-pending" role="status"><LoaderCircle size={16} className="spin" />{t("응답 대기 중")}</div>}
           </div>
-          <form className="composer" onSubmit={send}><WorkspaceInputs key={selected.id} session={selected} disabled={locked} onReading={setSourceReading} onChange={value => dispatch({ type: 'workspace', id: selected.id, value })} /><textarea aria-label={t("개인 메시지")} maxLength={16000} disabled={locked} value={selected.draft} onChange={e => dispatch({ type: "draft", id: selected.id, value: e.target.value })} />
-            <div className="composer-bottom"><span>{state.model || t("모델 미연결")}</span>{chatBusy ? <ButtonIcon label={t("개인 답변 중단")} onClick={() => native().cancel().catch(e => setError(e.message))}><Square size={16} /></ButtonIcon> : <button className="send" aria-label={t("개인 메시지 전송")} title={t("전송")} disabled={locked || !state.model || !selected.draft.trim() || (state.connection === 'google' ? !state.accountConfigured : !state.keyConfigured && !["local", "codex"].includes(state.provider))}><ArrowUp size={18} /></button>}</div>
+          <form className="composer" onSubmit={send}><WorkspaceInputs key={selected.id} state={state} session={selected} disabled={locked} onReading={setSourceReading} onChange={value => dispatch({ type: 'workspace', id: selected.id, value })} /><textarea aria-label={t("개인 메시지")} maxLength={16000} disabled={locked} value={selected.draft} onChange={e => dispatch({ type: "draft", id: selected.id, value: e.target.value })} />
+            <div className="composer-bottom"><span>{(selected.output === 'image' ? selected.imageModel ?? defaultImageModel(state) : state.model) || t("모델 미연결")}</span>{chatBusy ? <ButtonIcon label={t("개인 답변 중단")} onClick={() => native().cancel().catch(e => setError(e.message))}><Square size={16} /></ButtonIcon> : <button className="send" aria-label={t("개인 메시지 전송")} title={t("전송")} disabled={locked || !state.model || !selected.draft.trim() || (selected.output === 'image' && (!imageGenerationAvailable(state) || !(selected.imageModel ?? defaultImageModel(state)).trim())) || (['google', 'gemini-cli'].includes(state.connection) ? !state.accountConfigured : !state.keyConfigured && !["local", "codex"].includes(state.provider))}><ArrowUp size={18} /></button>}</div>
           </form>
           <div className="personal-destination"><span title={state.endpoint}>{state.endpoint || t("API 주소 미설정")}</span><span>{t("도구 실행 비활성")}</span></div>
         </section>

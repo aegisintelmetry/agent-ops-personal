@@ -12,4 +12,15 @@ async function exportDocument(params, choosePath) {
   return { saved: true, name: path.basename(selection.filePath) };
 }
 
-module.exports = { exportDocument };
+async function exportImage(params, choosePath) {
+  const { imageData, OUTPUT_LIMIT } = require('./image-data.cjs');
+  const image = imageData(params?.image, OUTPUT_LIMIT);
+  if (typeof params.name !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,100}$/.test(params.name)) throw new Error('Invalid image name');
+  const selection = await choosePath({ defaultPath: `${params.name}.${image.extension}`, filters: [{ name: 'Image', extensions: [image.extension] }], properties: ['showOverwriteConfirmation'] });
+  if (selection.canceled || !selection.filePath) return { saved: false };
+  if (path.extname(selection.filePath).toLowerCase() !== `.${image.extension}`) throw new Error('Invalid extension');
+  await fs.writeFile(selection.filePath, image.bytes);
+  return { saved: true, name: path.basename(selection.filePath) };
+}
+
+module.exports = { exportDocument, exportImage };

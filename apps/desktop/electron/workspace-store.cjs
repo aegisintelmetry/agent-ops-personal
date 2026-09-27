@@ -1,12 +1,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
-const LIMIT = 12 * 1024 * 1024;
+const { imageList, imageData } = require('./image-data.cjs');
+const LIMIT = 32 * 1024 * 1024;
 const fail = () => { throw new Error('workspace_storage'); };
 const string = (value, max) => { if (typeof value !== 'string' || value.length > max) fail(); return value; };
 const id = value => { if (!/^[A-Za-z0-9_-]{1,100}$/.test(string(value, 100)) || ['__proto__', 'constructor', 'prototype'].includes(value)) fail(); return value; };
 const list = (value, max) => { if (!Array.isArray(value) || value.length > max) fail(); return value; };
-const output = value => { if (!['chat', 'markdown', 'text'].includes(value ?? 'chat')) fail(); return value ?? 'chat'; };
+const output = value => { if (!['chat', 'markdown', 'text', 'image'].includes(value ?? 'chat')) fail(); return value ?? 'chat'; };
 const usage = value => value && Object.fromEntries(Object.entries(value).filter(([key, count]) => ['total_tokens', 'prompt_tokens', 'completion_tokens'].includes(key) && Number.isFinite(count) && count >= 0));
 
 function validateGroups(groups, recover = false) {
@@ -17,7 +18,7 @@ function validateGroups(groups, recover = false) {
       const sources = list(item.sources || [], 5).map(source => {
         const result = { id: id(source.id), name: string(source.name, 255), text: string(source.text, 12000) };
         if (source.image) {
-          if (!/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(string(source.image, 2800000))) fail();
+          imageData(source.image);
           result.image = source.image;
         }
         return result;
@@ -27,10 +28,12 @@ function validateGroups(groups, recover = false) {
         if (!['user', 'assistant'].includes(row.role) || !['pending', 'completed', 'partial', 'failed'].includes(row.state)) fail();
         return { id: id(row.id), role: row.role, content: string(row.content, 100000), state: recover && row.state === 'pending' ? 'failed' : row.state,
           ...(row.modelContent !== undefined ? { modelContent: string(row.modelContent, 100000) } : {}),
+          ...(row.images !== undefined ? { images: imageList(row.images, { output: row.role === 'assistant' }) } : {}),
           ...(row.model ? { model: string(row.model, 200) } : {}), output: output(row.output), usage: usage(row.usage) };
       });
       if (new Set(messages.map(row => row.id)).size !== messages.length) fail();
       const result = { id: id(item.id), title: string(item.title, 80), draft: string(item.draft, 16000), output: output(item.output), sources, messages };
+      if (item.imageModel !== undefined) result.imageModel = string(item.imageModel, 200);
       if (item.latestRun) {
         const run = item.latestRun;
         if (!['running', 'completed', 'partial', 'failed', 'cancelled'].includes(run.status)) fail();

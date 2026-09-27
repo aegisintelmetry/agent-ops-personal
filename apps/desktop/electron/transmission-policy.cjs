@@ -1,4 +1,5 @@
 const POLICY_VERSION = 'personal-transmission-v1';
+const { imageList } = require('./image-data.cjs');
 const BLOCKED_MESSAGE = '보안 정책으로 전송을 차단했습니다. 인증 정보로 의심되는 내용을 제거한 뒤 다시 요청해 주세요.';
 const INVALID_MESSAGE = '대화 입력이 제한을 초과했거나 올바르지 않습니다.';
 const patterns = [
@@ -21,9 +22,14 @@ function prepareMessages(messages, { secrets = [], ErrorType = Error } = {}) {
   if (!Array.isArray(messages) || messages.length < 1 || messages.length > 24) reject(INVALID_MESSAGE, 'invalid_input');
   const snapshot = messages.map(row => {
     if (!row || !['user', 'assistant'].includes(row.role) || typeof row.content !== 'string' || !row.content.trim()) reject(INVALID_MESSAGE, 'invalid_input');
-    return Object.freeze({ role: row.role, content: row.content });
+    let images;
+    if (row.images !== undefined) {
+      if (row.role !== 'user') reject(INVALID_MESSAGE, 'invalid_input');
+      try { images = imageList(row.images); } catch { reject(INVALID_MESSAGE, 'invalid_input'); }
+    }
+    return Object.freeze({ role: row.role, content: row.content, ...(images?.length ? { images } : {}) });
   });
-  if (JSON.stringify(snapshot).length > 100000) reject(INVALID_MESSAGE, 'invalid_input');
+  if (JSON.stringify(snapshot.map(({ role, content }) => ({ role, content }))).length > 100000 || snapshot.reduce((sum, row) => sum + (row.images?.length || 0), 0) > 5) reject(INVALID_MESSAGE, 'invalid_input');
   for (const { content } of snapshot) {
     if (patterns.some(pattern => pattern.test(content)) || secrets.some(secret => typeof secret === 'string' && secret.length >= 8 && content.includes(secret))) {
       reject(BLOCKED_MESSAGE, 'transmission_blocked');

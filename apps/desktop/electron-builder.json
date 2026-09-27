@@ -3,6 +3,7 @@
   "productName": "AEGIS Agent Ops",
   "copyright": "Copyright (c) 2026 aegisintelmetry",
   "asar": true,
+  "asarUnpack": ["node_modules/@google/gemini-cli/**"],
   "afterPack": "./after-pack.cjs",
   "directories": { "output": "release" },
   "files": ["dist/**", "electron/**", "package.json"],

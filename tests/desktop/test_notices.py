@@ -97,6 +97,25 @@ class NoticesTest(unittest.TestCase):
         with patch('agent_ops.desktop.build_windows.importlib.metadata.distribution', return_value=distribution):
             self.assertIn('Copyright fixture', third_party_notices(self.root, self.root))
 
+    def test_node_pty_binary_requires_matching_parent_license(self):
+        folder = self.root / 'node_modules/gaxios'
+        (folder / 'LICENSE').unlink()
+        metadata = {'name': '@lydell/node-pty-win32-x64', 'version': '1.1.0',
+                    'license': 'MIT', 'repository': {'url': 'git://github.com/lydell/node-pty.git'}}
+        (folder / 'package.json').write_text(json.dumps(metadata))
+        parent = self.root / 'node_modules/@lydell/node-pty'
+        parent.mkdir(parents=True)
+        parent_metadata = {**metadata, 'name': '@lydell/node-pty', 'optionalDependencies': {metadata['name']: '1.1.0'}}
+        (parent / 'package.json').write_text(json.dumps(parent_metadata))
+        (parent / 'LICENSE').write_text('fixture node-pty shared MIT notice')
+        distribution = SimpleNamespace(version='1.0.0', files=[Path('LICENSE')], locate_file=lambda file: self.root / file)
+        with patch('agent_ops.desktop.build_windows.importlib.metadata.distribution', return_value=distribution):
+            self.assertIn('fixture node-pty shared MIT notice', third_party_notices(self.root, self.root))
+        metadata['repository']['url'] = 'https://unrelated.invalid'
+        (folder / 'package.json').write_text(json.dumps(metadata))
+        with self.assertRaisesRegex(ValueError, 'Missing third-party license'):
+            third_party_notices(self.root, self.root)
+
     def test_missing_distribution_license_stops_packaging(self):
         with patch('agent_ops.desktop.build_windows.importlib.metadata.distribution',
                    return_value=SimpleNamespace(version='1.0.0', files=[])):

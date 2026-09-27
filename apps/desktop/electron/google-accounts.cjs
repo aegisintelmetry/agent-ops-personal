@@ -173,8 +173,9 @@ class GoogleAccounts {
       fail('Google 인증 갱신에 실패했습니다. 다시 로그인해 주세요.');
     }
   }
-  async complete(messages, config, signal, probe) {
+  async complete(messages, config, signal, probe, generate = false) {
     const { prepareMessages } = require('./transmission-policy.cjs');
+    const { geminiContents, generatedImages } = require('./image-data.cjs');
     messages = prepareMessages(messages, { ErrorType: PersonalError });
     config = { ...config };
     const { token, project } = await this.credential(config.accountId);
@@ -183,14 +184,20 @@ class GoogleAccounts {
     const response = await this.fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.model)}:generateContent`, {
       method: 'POST', redirect: 'error', signal,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, 'x-goog-user-project': project },
-      body: JSON.stringify({ contents: messages.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] })), generationConfig: { maxOutputTokens: probe ? Math.min(256, config.maxTokens) : config.maxTokens } }),
+      body: JSON.stringify({ contents: geminiContents(messages), generationConfig: generate ? { responseModalities: ['TEXT', 'IMAGE'] } : { maxOutputTokens: probe ? Math.min(256, config.maxTokens) : config.maxTokens } }),
     });
     if (!response.ok) {
       await response.body?.cancel().catch(() => {});
       if (response.status === 401) this.requireLogin(config.accountId);
       fail({ 401: 'Google 계정에 다시 로그인해 주세요.', 403: 'Google 프로젝트의 API 권한과 결제 설정을 확인해 주세요.', 404: 'Gemini 모델 ID를 확인해 주세요.', 429: '요청 한도 또는 잔액을 확인해 주세요.' }[response.status] || 'Gemini 요청에 실패했습니다.');
     }
-    const result = await boundedJson(response); signal.throwIfAborted();
+    const result = await boundedJson(response, generate ? 6 * 1024 * 1024 : undefined); signal.throwIfAborted();
+    if (generate) {
+      let images;
+      try { images = generatedImages(result, true); } catch { fail('image_missing'); }
+      const count = result.usageMetadata?.totalTokenCount;
+      return { text: '', images, model: config.model, usage: Number.isSafeInteger(count) && count >= 0 ? { total_tokens: count } : {}, status: result.candidates?.[0]?.finishReason === 'STOP' ? 'completed' : 'partial', checkedAt: new Date().toISOString() };
+    }
     const candidate = result.candidates?.[0];
     const text = candidate?.content?.parts?.filter(p => typeof p.text === 'string' && !p.thought).map(p => p.text).join('');
     if (!text?.trim()) fail('텍스트 응답이 없습니다. 모델 호환성과 출력 한도를 확인해 주세요.');
