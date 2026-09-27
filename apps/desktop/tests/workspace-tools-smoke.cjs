@@ -114,6 +114,7 @@ const payloads = [];
   await page.getByLabel('개인 메시지', { exact: true }).waitFor();
   await page.waitForFunction(() => document.querySelector('textarea[aria-label="개인 메시지"]')?.value === 'Restored unsent draft');
   assert.equal(await page.locator('.workspace-source-chips li').count(), 3);
+  if (await page.getByRole('button', { name: '작업 패널 표시', exact: true }).getAttribute('aria-pressed') === 'false') await page.getByRole('button', { name: '작업 패널 표시', exact: true }).click();
   await page.locator('.workspace-markdown h1').getByText('Workspace report').waitFor();
   const encrypted = fs.readFileSync(path.join(profile, 'agent-ops-personal/workspace.enc'));
   assert.ok(!encrypted.includes(Buffer.from('Restored unsent draft')));
