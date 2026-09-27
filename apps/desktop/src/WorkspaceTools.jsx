@@ -9,10 +9,18 @@ const labels = {
   output: ['출력', 'Output'], source: ['소스', 'Sources'], chat: ['대화', 'Chat'], markdown: ['문서 · Markdown', 'Document · Markdown'], text: ['문서 · 텍스트', 'Document · Text'],
   results: ['결과물', 'Outputs'], open: ['작업 패널 표시', 'Show workspace panel'], summary: ['실행 요약', 'Run summary'], empty: ['아직 결과물이 없습니다.', 'No outputs yet.'], noSources: ['선택한 소스가 없습니다.', 'No sources selected.'],
   add: ['소스 추가', 'Add sources'], remove: ['소스 제거', 'Remove source'], close: ['작업 패널 닫기', 'Close workspace panel'], save: ['파일 저장', 'Save file'],
-  source_type: ['TXT·MD·CSV·JSON 최대 48KB, PDF·DOCX·PNG·JPG·WebP 최대 2MB입니다.', 'TXT, MD, CSV, JSON: up to 48KB. PDF, DOCX, PNG, JPG, WebP: up to 2MB.'],
-  source_content: ['비어 있거나 읽을 수 없는 파일입니다. 문서는 12,000자·PDF 100쪽 이내여야 합니다. 암호화 문서와 스캔 PDF는 지원하지 않습니다.', 'Empty, unreadable or oversized file. Documents: 12,000 characters, PDFs: 100 pages. Encrypted documents and scanned PDFs are not supported.'],
+  source_type: ['텍스트·PDF·DOCX·ZIP 최대 512MB, CSV 50MB, 이미지 20MB입니다.', 'Text, PDF, DOCX, ZIP: 512MB. CSV: 50MB. Images: 20MB.'],
+  source_size: ['파일 크기 제한을 초과했습니다. 문서·ZIP 512MB, CSV 50MB, 이미지 20MB까지 가능합니다.', 'File size limit exceeded: documents/ZIP 512MB, CSV 50MB, images 20MB.'],
+  source_content: ['비어 있거나 읽을 수 없는 파일입니다. 스캔 PDF와 암호화 문서는 지원하지 않습니다.', 'Empty or unreadable file. Scanned PDFs and encrypted documents are not supported.'],
+  source_archive: ['손상되었거나 안전한 압축 처리 범위를 초과한 ZIP입니다.', 'The archive is damaged or exceeds safe extraction limits.'],
+  source_encrypted: ['암호가 설정된 ZIP은 지원하지 않습니다.', 'Password-protected ZIP files are not supported.'],
+  source_archive_empty: ['ZIP 안에 읽을 수 있는 텍스트·PDF·DOCX가 없습니다.', 'No readable text, PDF or DOCX files in the ZIP.'],
+  source_native: ['큰 파일은 데스크톱 앱의 파일 선택 창에서 추가해 주세요.', 'Add large files using the desktop file picker.'],
+  excerpt: ['일부 내용만 읽음 · 전체 파일 분석 아님', 'Excerpt only · not a full-file analysis'],
+  optimized: ['이미지 크기 최적화됨', 'Image resized for transmission'],
+  contextExcerpt: ['첨부 내용 일부가 모델 입력 분량에 맞춰 발췌됩니다.', 'Attachment excerpts are shortened to fit the model input budget.'],
   source_timeout: ['문서 읽기 시간이 초과되었습니다.', 'Document reading timed out.'], source_busy: ['문서를 읽고 있습니다.', 'Reading a document.'],
-  source_limit: ['소스는 최대 5개, 전체 12,000자까지 추가할 수 있습니다.', 'Sources are limited to 5 files and 12,000 characters total.'],
+  source_limit: ['소스는 한 대화에 최대 5개까지 추가할 수 있습니다.', 'Up to 5 sources per conversation.'],
   sent: ['첨부 자료는 전송 시 선택한 모델에 전달됩니다.', 'Attachments are sent to the selected model when you send.'],
   image: ['이미지 생성', 'Generate image'], imageModel: ['이미지 모델 ID', 'Image model ID'],
   image_invalid: ['이미지를 읽을 수 없습니다. PNG·JPEG·WebP 파일과 크기를 확인해 주세요.', 'Cannot read the image. Check the PNG, JPEG or WebP file and size.'],
@@ -63,11 +71,10 @@ export function WorkspaceInputs({ state, session, disabled, onChange, onReading 
     try {
       if (sources.length + files.length > SOURCE_COUNT) throw new Error('source_limit');
       const additions = [];
-      for (const file of files) additions.push(await readSource(file, params => window.btk.personal.workspace.import(params)));
+      for (const file of files) additions.push(await readSource(file, params => window.btk.personal.workspace.import(params), window.btk.personal.workspace.importFile));
       const next = [...sources, ...additions];
-      if (next.reduce((sum, source) => sum + source.text.length, 0) > SOURCE_LIMIT) throw new Error('source_limit');
       onChange({ sources: next });
-    } catch (error) { setError(w(['source_limit', 'source_type', 'source_content', 'source_timeout', 'source_busy'].find(code => error.message?.endsWith(code)) || 'source_content')); }
+    } catch (error) { setError(w(['source_limit', 'source_type', 'source_size', 'source_content', 'source_timeout', 'source_busy', 'source_archive', 'source_archive_empty', 'source_encrypted', 'source_native'].find(code => error.message?.endsWith(code)) || 'source_content')); }
     finally { setReading(false); onReading?.(false); }
   }
   return <div className="workspace-inputs" onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); if (!disabled && !reading) attach(Array.from(event.dataTransfer.files || [])); }}>
@@ -76,14 +83,18 @@ export function WorkspaceInputs({ state, session, disabled, onChange, onReading 
         {['chat', 'markdown', 'text', 'image'].map(value => <option key={value} value={value}>{w(value)}</option>)}
       </select></label>
       <button type="button" className="workspace-add" disabled={disabled || reading || sources.length >= SOURCE_COUNT} title={w('source_type')} onClick={() => picker.current?.click()}><Plus size={15} />{w('source')}<small>{sources.length || ''}</small></button>
-      <input ref={picker} type="file" multiple accept=".txt,.md,.csv,.json,.pdf,.docx,.png,.jpg,.jpeg,.webp" aria-label={w('add')} hidden disabled={disabled || reading} onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ''; attach(files); }} />
+      <input ref={picker} type="file" multiple accept=".txt,.md,.csv,.json,.jsonl,.yaml,.yml,.log,.py,.js,.jsx,.ts,.tsx,.html,.css,.xml,.sql,.sh,.ps1,.ini,.toml,.pdf,.docx,.zip,.png,.jpg,.jpeg,.webp" aria-label={w('add')} hidden disabled={disabled || reading} onChange={event => { const files = Array.from(event.target.files || []); event.target.value = ''; attach(files); }} />
     </div>
+    <div className="workspace-source-details">
     {session.output === 'image' && <label className="workspace-image-model"><Image size={15} /><span>{w('imageModel')}</span><input aria-label={w('imageModel')} maxLength={200} disabled={disabled} value={session.imageModel ?? defaultImageModel(state)} onChange={event => onChange({ imageModel: event.target.value })} /></label>}
     {session.output === 'image' && !imageGenerationAvailable(state) && <p className="workspace-source-error" role="alert">{w('image_unsupported')}</p>}
     {sources.length > 0 && <><ul className="workspace-source-chips">{sources.map(source => <li key={source.id}><FileText size={14} /><span title={source.name}>{source.name}</span><button type="button" className="icon-button" title={w('remove')} aria-label={`${w('remove')}: ${source.name}`} disabled={disabled || reading} onClick={() => onChange({ sources: sources.filter(item => item.id !== source.id) })}><X size={13} /></button></li>)}</ul><small className="workspace-source-notice">{w('sent')}</small></>}
     {error && <p className="workspace-source-error" role="alert">{error}</p>}
     {reading && <small role="status">{w('reading')}</small>}
+    {sources.filter(source => source.truncated || source.optimized).map(source => <small className="workspace-source-notice" role="status" key={source.id}>{source.name}: {w(source.optimized ? 'optimized' : 'excerpt')}</small>)}
+    {sources.reduce((sum, source) => sum + source.text.length, 0) > SOURCE_LIMIT && <small className="workspace-source-notice" role="status">{w('contextExcerpt')}</small>}
     {sources.some(source => source.image) && <p className="workspace-source-notice" role="status">{w('image_notice')}</p>}
+    </div>
   </div>;
 }
 

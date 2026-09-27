@@ -5,12 +5,26 @@ const sessions = import('../src/sessions.mjs');
 
 test('text sources reject unsupported, binary, oversized and empty inputs', async () => {
   const { readSource } = await tools;
-  for (const [name, text, size] of [['file.pdf', 'text', 4], ['file.txt', '', 0], ['file.md', 'a\0b', 3], ['file.txt', 'a', 48001], ['file.txt', 'a'.repeat(12001), 12001]]) {
+  for (const [name, text, size] of [['file.pdf', 'text', 4], ['file.txt', '', 0], ['file.md', 'a\0b', 3], ['file.txt', 'a', 512 * 1024 * 1024 + 1], ['file.csv', 'a', 50 * 1024 * 1024 + 1]]) {
     await assert.rejects(readSource({ name, size, text: async () => text }));
   }
   const source = await readSource({ name: 'report.md', size: 5, text: async () => 'hello' });
   assert.equal(source.text, 'hello');
   assert.equal(source.name, 'report.md');
+});
+
+test('large text is attached as an explicit excerpt and native files avoid arrayBuffer', async () => {
+  const { readSource, workspaceInput } = await tools;
+  const large = await readSource({ name: 'long.md', size: 48001, text: async () => 'a'.repeat(48001) });
+  assert.equal(large.text.length, 12000);
+  assert.equal(large.truncated, true);
+  const file = { name: 'project.zip', size: 500 * 1024 * 1024, arrayBuffer() { throw new Error('must not buffer'); } };
+  const zip = await readSource(file, null, async selected => { assert.equal(selected, file); return { text: 'ZIP reference', entries: 2, skipped: 1, truncated: true }; });
+  assert.equal(zip.entries, 2);
+  assert.match(workspaceInput('read', [zip]), /"partial":true/);
+  const input = workspaceInput('read', Array.from({ length: 5 }, (_, i) => ({ name: `${i}.md`, text: 'a'.repeat(12000) })));
+  assert.ok(input.length < 16000);
+  assert.match(input, /do not claim/);
 });
 
 test('source and output context reach the model without changing plain chat', async () => {

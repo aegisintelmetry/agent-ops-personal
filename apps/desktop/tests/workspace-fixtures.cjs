@@ -1,4 +1,4 @@
-function pdfFixture() {
+function pdfFixture(padding = 0) {
   const stream = 'BT /F1 12 Tf 30 100 Td (Workspace PDF reference) Tj ET';
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
@@ -7,7 +7,7 @@ function pdfFixture() {
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
     `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
   ];
-  let value = '%PDF-1.4\n';
+  let value = '%PDF-1.4\n' + (padding ? '%' + ' '.repeat(padding) + '\n' : '');
   const offsets = [0];
   for (const [index, object] of objects.entries()) { offsets.push(value.length); value += `${index + 1} 0 obj\n${object}\nendobj\n`; }
   const xref = value.length;

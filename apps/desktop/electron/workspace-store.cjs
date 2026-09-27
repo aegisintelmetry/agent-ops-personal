@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { randomUUID } = require('node:crypto');
 const { imageList, imageData } = require('./image-data.cjs');
+const { FILE_LIMIT, SOURCE_COUNT, EXCERPT_LIMIT } = require('./workspace-limits.cjs');
 const LIMIT = 32 * 1024 * 1024;
 const fail = () => { throw new Error('workspace_storage'); };
 const string = (value, max) => { if (typeof value !== 'string' || value.length > max) fail(); return value; };
@@ -15,15 +16,19 @@ function validateGroups(groups, recover = false) {
   return Object.fromEntries(Object.entries(groups).map(([agent, group]) => {
     id(agent);
     const items = list(group.items, 20).map(item => {
-      const sources = list(item.sources || [], 5).map(source => {
-        const result = { id: id(source.id), name: string(source.name, 255), text: string(source.text, 12000) };
+      const sources = list(item.sources || [], SOURCE_COUNT).map(source => {
+        const result = { id: id(source.id), name: string(source.name, 255), text: string(source.text, EXCERPT_LIMIT) };
+        for (const key of ['truncated', 'optimized']) if (source[key] !== undefined) { if (typeof source[key] !== 'boolean') fail(); result[key] = source[key]; }
+        for (const key of ['size', 'entries', 'skipped']) if (source[key] !== undefined) {
+          if (!Number.isSafeInteger(source[key]) || source[key] < 0 || source[key] > (key === 'size' ? FILE_LIMIT : 2000)) fail();
+          result[key] = source[key];
+        }
         if (source.image) {
           imageData(source.image);
           result.image = source.image;
         }
         return result;
       });
-      if (sources.reduce((sum, source) => sum + source.text.length, 0) > 12000) fail();
       const messages = list(item.messages, 500).map(row => {
         if (!['user', 'assistant'].includes(row.role) || !['pending', 'completed', 'partial', 'failed'].includes(row.state)) fail();
         return { id: id(row.id), role: row.role, content: string(row.content, 100000), state: recover && row.state === 'pending' ? 'failed' : row.state,

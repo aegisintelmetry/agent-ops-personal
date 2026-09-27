@@ -178,7 +178,7 @@ class CodexConnection {
   async models() {
     if (!(await this.state()).connected) throw new PersonalError("ChatGPT 로그인을 먼저 완료해 주세요.");
     const result = await this.request("model/list", { limit: 100 });
-    return (result.data || []).filter(item => !item.hidden && typeof item.model === "string").map(item => ({ id: item.model, name: item.displayName || item.model }));
+    return (result.data || []).filter(item => !item.hidden && typeof item.model === "string").map(item => ({ id: item.model, name: item.displayName || item.model, ...require('./codex-effort.cjs').effortMetadata(item) }));
   }
   async limits() {
     if (!(await this.state()).connected) throw new PersonalError("ChatGPT 로그인을 먼저 완료해 주세요.");
@@ -192,10 +192,11 @@ class CodexConnection {
         resetsAt: Number.isFinite(value.resetsAt) ? value.resetsAt : null }];
     });
   }
-  async complete(messages, model) {
+  async complete(messages, model, effort = '') {
     messages = require('./transmission-policy.cjs').prepareMessages(messages, { ErrorType: PersonalError });
     if (this.active || this.loginId) throw new PersonalError("진행 중인 요청을 먼저 완료해 주세요.");
     if (typeof model !== "string" || !model || model.length > 200) throw new PersonalError("Codex 모델을 선택해 주세요.");
+    if (!require('./codex-effort.cjs').validEffort(effort)) throw new PersonalError('지원되는 추론 강도를 선택해 주세요.');
     // Reserve before awaiting auth so a second caller cannot start another turn.
     const eventLimit = 4 * 1024 * 1024 + messages.reduce((sum, message) => sum + (message.images || []).reduce((size, image) => size + image.length, 0), 0);
     const active = { threadId: null, text: "", eventLimit, reject: () => {}, resolve: () => {} };
@@ -203,6 +204,11 @@ class CodexConnection {
     let timer;
     try {
       if (!(await this.state()).connected) throw new PersonalError("ChatGPT 로그인을 먼저 완료해 주세요.");
+      if (effort) {
+        const selected = (await this.models()).find(item => item.id === model);
+        if (!require('./codex-effort.cjs').supportsEffort(selected, effort)) throw new PersonalError('이 모델에서 지원하지 않는 추론 강도입니다. 모델 설정을 다시 저장해 주세요.');
+        if (this.active !== active) throw new PersonalError('요청을 취소했습니다.');
+      }
       const thread = await this.request("thread/start", { model, modelProvider: "openai", cwd: this.cwd, sandbox: "read-only", approvalPolicy: "never", ephemeral: true,
         developerInstructions: "Respond to the supplied conversation as a text assistant. Do not use tools, inspect files, run commands, or request permissions." });
       if (this.active !== active) throw new PersonalError("요청을 취소했습니다.");
@@ -215,7 +221,7 @@ class CodexConnection {
         { type: 'text', text: JSON.stringify({ role, content }), text_elements: [] },
         ...(images || []).map(url => ({ type: 'image', url })),
       ]) : [{ type: 'text', text: JSON.stringify(messages.map(({ role, content }) => ({ role, content }))), text_elements: [] }];
-      await this.request("turn/start", { threadId: active.threadId, input });
+      await this.request("turn/start", { threadId: active.threadId, input, ...(effort ? { effort } : {}) });
       return await result;
     } finally {
       clearTimeout(timer);

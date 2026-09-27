@@ -72,6 +72,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/workspace-tools-smoke.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/workspace-archive-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/workspace-controls-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/codex-effort-smoke.cjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/image-ui-smoke.cjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/public-screenshots.cjs

@@ -82,6 +82,21 @@ test("model dispatch follows selected agent with no key forwarding", async t => 
   assert.equal(calls[0].key, "Bearer fixture-alpha-only");
   assert.equal(calls[1].key, undefined);
 });
+
+test('Codex reasoning effort is per agent, survives restart and resets for legacy model-only saves', t => {
+  const { profiles, options } = setup(t);
+  profiles.service.setMode('personal');
+  profiles.service.codexModel('fixture-model', 'high');
+  const worker = profiles.create('Worker');
+  profiles.service.codexModel('fixture-model', 'low');
+  const restored = new AgentProfiles(options);
+  assert.equal(restored.state().reasoningEffort, 'low');
+  assert.equal(restored.select('default').reasoningEffort, 'high');
+  assert.equal(restored.open(worker.agentId).state().reasoningEffort, 'low');
+  assert.throws(() => restored.service.codexModel('fixture-model', 'invented'), /추론 강도/);
+  assert.equal(restored.state().reasoningEffort, 'high');
+  assert.equal(restored.service.codexModel('other-model').reasoningEffort, '');
+});
 test("configuration changes are blocked while a request is running", t => {
   const { profiles } = setup(t);
   profiles.service.active = new AbortController();

@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("btk", {
   native: true,
@@ -23,6 +23,13 @@ contextBridge.exposeInMainWorld("btk", {
       save: groups => ipcRenderer.invoke('btk:workspace:save', groups),
       flush: groups => ipcRenderer.sendSync('btk:workspace:flush', groups),
       import: params => ipcRenderer.invoke('btk:workspace:import', params),
+      importFile: async file => {
+        // Only a browser File chosen/dropped by the user supplies a native path.
+        const filePath = webUtils.getPathForFile(file);
+        if (filePath) return ipcRenderer.invoke('btk:workspace:import-file', { filePath });
+        if (file.size > 2 * 1024 * 1024) throw new Error('source_native');
+        return ipcRenderer.invoke('btk:workspace:import', { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()), detailed: true });
+      },
     },
     google: {
       state: agentId => ipcRenderer.invoke('btk:google:state', { agentId }),
@@ -67,7 +74,7 @@ contextBridge.exposeInMainWorld("btk", {
       logout: () => ipcRenderer.invoke("btk:personal:codex_logout"),
       models: () => ipcRenderer.invoke("btk:personal:codex_models"),
       limits: () => ipcRenderer.invoke("btk:personal:codex_limits"),
-      model: (model) => ipcRenderer.invoke("btk:personal:codex_model", { model }),
+      model: (model, effort = '') => ipcRenderer.invoke("btk:personal:codex_model", { model, effort }),
     },
     slack: {
       state: () => ipcRenderer.invoke("btk:personal:slack_state"),

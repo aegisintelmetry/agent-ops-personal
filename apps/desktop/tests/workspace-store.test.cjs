@@ -41,6 +41,21 @@ test('interrupted requests become retryable failures, never completed history', 
   assert.deepEqual(conversationInput(recovered.messages, 'next'), [{ role: 'user', content: 'next' }]);
 });
 
+test('archive excerpts and limits persist without accepting unbounded metadata', () => {
+  const data = groups();
+  data.default.items[0].sources = Array.from({ length: 5 }, (_, i) => ({
+    id: `source${i}`, name: `${i}.zip`, text: 'a'.repeat(12000), size: 512 * 1024 * 1024,
+    truncated: true, entries: 8, skipped: 2,
+  }));
+  const value = store(); value.load(); value.save(data);
+  const restored = new WorkspaceStore({ directory: value.directory, safeStorage }).load().default.items[0].sources;
+  assert.deepEqual(restored, data.default.items[0].sources);
+  for (const [field, invalid] of [['size', 512 * 1024 * 1024 + 1], ['entries', 2001], ['skipped', -1], ['truncated', 'yes']]) {
+    const bad = structuredClone(data); bad.default.items[0].sources[0][field] = invalid;
+    assert.throws(() => value.save(bad), /workspace_storage/);
+  }
+});
+
 test('image results and selected generation model survive encrypted restart', () => {
   const { image } = require('./image-fixture.cjs');
   const value = store(); value.load();

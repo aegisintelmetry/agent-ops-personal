@@ -44,7 +44,9 @@ returned by a provider is fetched. Credentials never enter renderer state.
 
 ## Persistence and Boundaries
 
-- Sources: at most 5 images/request, 2 MiB per image, 16 million decoded pixels.
+- Sources: at most 5 images/request, 20 MiB per selected file and 16 million
+  decoded pixels. Files over 2 MiB are resized/compressed to bounded WebP;
+  the UI marks optimization. The model still receives at most 2 MiB per image.
 - Result: one PNG/JPEG/WebP, up to 4 MiB and 16 million decoded pixels.
 - Generation response JSON is limited to 6 MiB. Existing cancellation and timeout
   behavior apply; cancellation does not guarantee the provider refunds usage.

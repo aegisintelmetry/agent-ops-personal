@@ -99,11 +99,15 @@ else {
       if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('source_content');
       return workspaceImporter.read(params);
     });
+    ipcMain.handle('btk:workspace:import-file', async (event, params) => {
+      if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('source_content');
+      return workspaceImporter.readFile(params?.filePath);
+    });
     const complete = async (messages, options) => {
       if (!options?.probe && Array.isArray(messages)) messages = enrich(messages, knowledge.snapshot(agents.data.selected), messages.at(-1)?.content);
       if (personal.data.connection !== "codex") return personal.complete(messages, options);
       personal.idle(); personal.codexActive = true;
-      try { return await codex.complete(messages, personal.data.codexModel); }
+      try { return await codex.complete(messages, personal.data.codexModel, personal.data.codexReasoningEffort || ''); }
       finally { personal.codexActive = false; }
     };
     team = new TeamCoordinator({ open: (id, { objective }) => {
@@ -112,7 +116,7 @@ else {
       if (state.mode !== 'personal' || !state.model || (state.connection !== 'codex' && !state.accountConfigured && state.provider !== 'local' && !state.keyConfigured)) throw new PersonalError('참여 에이전트의 모델 연결을 설정해 주세요.');
       const connection = state.connection === 'codex' ? new CodexConnection({ directory: agents.location(id), openExternal: url => shell.openExternal(url) }) : null;
       const snapshot = knowledge.snapshot(id, true);
-      return { model: state.model, complete: messages => { const input = enrich(messages, snapshot, objective); return connection ? connection.complete(input, state.model) : service.complete(input); }, cancel: () => connection ? connection.cancel() : service.cancel(), close: () => connection?.stop() };
+      return { model: state.model, complete: messages => { const input = enrich(messages, snapshot, objective); return connection ? connection.complete(input, state.model, state.reasoningEffort || '') : service.complete(input); }, cancel: () => connection ? connection.cancel() : service.cancel(), close: () => connection?.stop() };
     } });
     for (const method of ['state', 'login', 'cancelLogin', 'logout', 'model']) ipcMain.handle(`btk:gemini:${method}`, async (event, params) => {
       if (!trustedFrame(event, window, entry) || personalFailure || personal.data.mode !== 'personal') throw new Error('Untrusted request');
@@ -243,9 +247,11 @@ else {
             if (method === "codex_models") return await codex.models();
             if (method === "codex_limits") return await codex.limits();
             if (method === "codex_model") {
-              if (!(await codex.models()).some(model => model.id === params?.model)) throw new PersonalError("사용 가능한 Codex 모델을 선택해 주세요.");
+              const model = (await codex.models()).find(model => model.id === params?.model);
+              if (!model) throw new PersonalError("사용 가능한 Codex 모델을 선택해 주세요.");
+              if (!require('./codex-effort.cjs').supportsEffort(model, params.effort ?? '')) throw new PersonalError('이 모델에서 지원하지 않는 추론 강도입니다. 모델 설정을 다시 저장해 주세요.');
               personal.codexActive = false;
-              return agents.state(personal.codexModel(params.model));
+              return agents.state(personal.codexModel(params.model, params.effort ?? ''));
             }
             } finally { personal.codexActive = false; }
           }

@@ -17,12 +17,12 @@ test('parser rejects unsupported, oversized and broken inputs and serializes wor
   const broken = importer.read({ name: 'x.pdf', bytes: Buffer.from('not a PDF') });
   await assert.rejects(importer.read({ name: 'x.pdf', bytes: pdfFixture() }), /source_busy/);
   await assert.rejects(broken, /source_content/);
-  await assert.rejects(importer.read({ name: 'x.docx', bytes: Buffer.from('not a ZIP') }), /source_content/);
+  await assert.rejects(importer.read({ name: 'x.docx', bytes: Buffer.from('not a ZIP') }), /source_archive/);
 });
 
 test('ZIP expansion limit rejects compressed document bombs before Mammoth', async () => {
   const zip = new (require('jszip'))();
   zip.file('word/document.xml', 'a'.repeat(17 * 1024 * 1024));
   const bytes = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' });
-  await assert.rejects(new WorkspaceImporter().read({ name: 'bomb.docx', bytes }), /source_content/);
+  await assert.rejects(new WorkspaceImporter().read({ name: 'bomb.docx', bytes }), /source_archive/);
 });

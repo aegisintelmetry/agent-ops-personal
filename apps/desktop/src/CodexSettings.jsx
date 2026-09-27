@@ -7,10 +7,15 @@ export default function CodexSettings({ state, busy, run, onSaved }) {
   const [account, setAccount] = useState(null);
   const [models, setModels] = useState([]);
   const [model, setModel] = useState(state.model || "");
+  const [effort, setEffort] = useState(state.reasoningEffort || '');
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [limits, setLimits] = useState(null);
   const api = window.btk.personal.codex;
+  const selectedModel = models.find(item => item.id === model);
+  const efforts = selectedModel?.reasoningEfforts || [];
+  const effortLabels = { none: '없음 (None)', minimal: '최소 (Minimal)', low: '낮음 (Low)', medium: '보통 (Medium)', high: '높음 (High)', xhigh: '매우 높음 (Extra high)', max: '최대 (Max)' };
+  const validSelection = Boolean(selectedModel) && (!effort || efforts.includes(effort));
   async function refresh() {
     const next = await api.state(); setAccount(next); setError(next.error || "");
     if (next.connected) setModels(await api.models()); else { setModels([]); setLimits(null); }
@@ -48,11 +53,19 @@ export default function CodexSettings({ state, busy, run, onSaved }) {
       {account?.connected && <button className="outline-button" disabled={busy} onClick={() => run(async () => setLimits(await api.limits()))}><Gauge size={16} />{t("사용 한도")}</button>}
     </div>
     {limits && <div className="personal-notice" role="status">{limits.length ? limits.map(item => <p key={item.name}>{item.windowMinutes != null ? t("{0}분 한도", [item.windowMinutes]) : t("사용 한도")} · {item.usedPercent}{t("% 사용")}{item.resetsAt ? t(" · 초기화 {0}", [new Date(item.resetsAt * 1000).toLocaleString(locale)]) : ""}</p>) : t("사용 한도 정보 미제공")}</div>}
-    <form onSubmit={event => { event.preventDefault(); run(async () => { onSaved(await api.model(model)); setNotice("Codex 모델 저장됨"); }); }}>
+    <form onSubmit={event => { event.preventDefault(); run(async () => { onSaved(await api.model(model, effort)); setNotice("Codex 모델 저장됨"); }); }}>
       <fieldset disabled={busy || !account?.connected}>
-        <label>{t("Codex 모델")}<select aria-label={t("Codex 모델")} required value={model} onChange={event => { setModel(event.target.value); setNotice(""); }}><option value="">{t("모델 선택")}</option>{models.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-        <div className="personal-actions"><button className="outline-button" disabled={!model || !models.some(item => item.id === model)}><Save size={16} />{t("모델 저장")}</button>
-          <button type="button" className="outline-button" disabled={!state.model || state.model !== model} onClick={() => run(async () => { await window.btk.personal.test(); setNotice("대화 연결 확인"); })}><Check size={16} />{t("연결 시험")}</button></div>
+        <label>{t("Codex 모델")}<select aria-label={t("Codex 모델")} required value={model} onChange={event => {
+          const next = event.target.value; setModel(next); setNotice('');
+          if (!models.find(item => item.id === next)?.reasoningEfforts?.includes(effort)) setEffort('');
+        }}><option value="">{t("모델 선택")}</option>{models.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label>{t('추론 강도')}<select aria-label={t('추론 강도')} disabled={!selectedModel} value={effort} onChange={event => { setEffort(event.target.value); setNotice(''); }}>
+          <option value="">{t('모델 기본값')}{selectedModel?.defaultReasoningEffort ? ` · ${t(effortLabels[selectedModel.defaultReasoningEffort])}` : ''}</option>
+          {efforts.map(value => <option key={value} value={value}>{t(effortLabels[value] || value)}</option>)}
+          {effort && !efforts.includes(effort) && <option value={effort} disabled>{t('저장된 추론 강도 사용 불가')}</option>}
+        </select></label>
+        <div className="personal-actions"><button className="outline-button" disabled={!validSelection}><Save size={16} />{t("모델 저장")}</button>
+          <button type="button" className="outline-button" disabled={!validSelection || state.model !== model || (state.reasoningEffort || '') !== effort} onClick={() => run(async () => { await window.btk.personal.test(); setNotice("대화 연결 확인"); })}><Check size={16} />{t("연결 시험")}</button></div>
       </fieldset>
     </form>
     {notice && <p role="status">{t(notice)}</p>}

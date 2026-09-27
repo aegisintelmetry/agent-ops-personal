@@ -80,6 +80,26 @@ test("login completion checks login identity and never exposes the raw error", a
 test("Codex models return a sanitized visible list", async t => {
   const f = fixture(t); assert.deepEqual(await f.service.models(), [{ id: "fixture-model", name: "Fixture model" }]);
 });
+
+test('Codex exposes only advertised reasoning efforts and a supported default', async t => {
+  const f = fixture(t, { handle(message, emit) {
+    if (message.method !== 'model/list') return false;
+    emit({ id: message.id, result: { data: [{ model: 'fixture-model', defaultReasoningEffort: 'high',
+      supportedReasoningEfforts: [{ reasoningEffort: 'low' }, { reasoningEffort: 'high', token: 'do-not-return' }, { reasoningEffort: 'high' }, { reasoningEffort: 'invalid' }, null] }] } });
+    return true;
+  } });
+  assert.deepEqual(await f.service.models(), [{ id: 'fixture-model', name: 'fixture-model', reasoningEfforts: ['low', 'high'], defaultReasoningEffort: 'high' }]);
+  await f.service.complete([{ role: 'user', content: 'Hello' }], 'fixture-model', 'high');
+  assert.equal(f.calls.find(call => call.method === 'turn/start').params.effort, 'high');
+});
+
+test('unsupported effort fails before inference and default omits the override', async t => {
+  const f = fixture(t);
+  for (const effort of ['high', 'arbitrary', null]) await assert.rejects(f.service.complete([{ role: 'user', content: 'Hello' }], 'fixture-model', effort), /추론 강도/);
+  assert.equal(f.calls.some(call => call.method === 'thread/start'), false);
+  await f.service.complete([{ role: 'user', content: 'Hello' }], 'fixture-model');
+  assert.equal(Object.hasOwn(f.calls.find(call => call.method === 'turn/start').params, 'effort'), false);
+});
 test("quota view exposes only measured numeric fields", async t => {
   const f = fixture(t, { handle: (message, emit) => {
     if (message.method !== "account/rateLimits/read") return false;

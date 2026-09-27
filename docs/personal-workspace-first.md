@@ -10,17 +10,34 @@ remain enabled.
 ## Available
 
 - Composer: Chat, Markdown document, plain-text document or image output.
-- Explicit file selection: UTF-8 TXT, MD, CSV and JSON; up to five files and
-  12,000 source characters total, at most 48 KB per file before decoding.
-- Text extraction from PDF and DOCX, at most 2 MiB per file. PDF is limited to
-  100 pages. Encrypted documents, scanned PDFs and OCR are not supported.
-  Parsing runs in a disposable worker with a 15-second timeout and a 128 MiB
-  V8 old-generation limit (not a total process-memory ceiling). DOCX ZIP entries
-  are bounded and validated before extraction. No Office installation is required.
+- Explicit file selection: UTF-8 text, source code, PDF, DOCX and ZIP up to
+  512 MiB each; CSV up to 50 MiB; up to five attachments per conversation.
+  Selected native files are read in a background worker by path rather than
+  copied through renderer IPC. Browser-created Files retain a 2 MiB IPC fallback.
+- ZIP text/code and PDF/DOCX entries are read without extraction to disk or
+  execution. Encrypted archives, unsafe paths, symlinks and excessive expansion
+  are rejected. At most 2,000 entries and 1 GiB declared expansion; large entries
+  with a compression ratio over 1,000 are rejected. Nested ZIPs and binary files
+  are skipped, not recursively expanded. PDF/DOCX entries inside ZIPs are capped
+  at 16 MiB. Skipped entries and excerpting are explicitly marked as partial.
+- Up to 12,000 extracted characters are retained per attachment; a shared
+  12,000-character excerpt budget is sent to the model. The full original file
+  is NOT stored or sent, and this is NOT full-file indexing or ChatGPT feature
+  parity. Partial status is visible and included in the model context.
+- PDF extraction reads at most 100 pages, stopping at the excerpt budget.
+  Encrypted documents, scanned PDFs and OCR are not supported. Parsing runs in
+  a disposable worker with a 60-second timeout and 192 MiB V8 old-generation
+  limit (not a total process-memory ceiling). PDF uses ranged file reads; DOCX
+  retains at most 16 MiB of XML and ignores embedded media. No Office is required.
 - PNG, JPEG and WebP can be sent to vision-capable models after native confirmation
-  (2 MiB, 16 million pixels). Image generation and explicit saving are available
+  (20 MiB input, 16 million pixels). Inputs over 2 MiB are resized/compressed to
+  bounded WebP before transmission; the UI marks this optimization. The existing
+  2 MiB model-image and encrypted storage budgets remain intact.
+  Image generation and explicit saving are available
   on supported connections; see [image workspace](personal-images.md).
 - File-picker and drag-and-drop input share the same validation and limits.
+- Attachment details scroll independently so long file notices cannot push the
+  output selector, text input or send button outside a short desktop window.
 - Attached text is sent with the next request through the existing guarded model
   path. The composer displays that transmission boundary before sending.
 - Each conversation owns its sources and output choice. Successful source context
@@ -57,7 +74,7 @@ HTML publishing and new governance workflows are not implemented by this change.
 TXT/MD and generated raster images can be exported. PDF/Word import extracts text, not page layout or
 embedded images. Cross-device synchronization is not provided. This change does
 not sign an installer or automatically update an installed copy. Release details
-and upgrade instructions are recorded in [0.5.16](releases/0.5.16.md).
+and upgrade instructions are recorded in [0.5.19](release-0.5.19.md).
 
 ## Verification
 
@@ -65,6 +82,20 @@ and upgrade instructions are recorded in [0.5.16](releases/0.5.16.md).
 - `npm run build`
 - `npm run test:desktop`
 - `node tests/workspace-tools-smoke.cjs`
+- `node tests/workspace-archive-smoke.cjs`
+- `npm run test:workspace-controls` (five long attachments, all output modes,
+  390-1440 pixel widths, 500-900 pixel heights, settings return and language switch)
+
+The archive smoke additionally exercises native ZIP selection, drag-and-drop,
+512 MiB text input, CSV over-limit rejection, partial model context, 20 MiB image
+optimization, encrypted metadata recovery and desktop/mobile Korean/English UI.
+Unit tests exercise an exactly 512 MiB padded ZIP and unsafe ZIP rejection.
+Fixtures do not establish general real-world parsing throughput or peak memory.
+
+Size baseline: [OpenAI File Uploads FAQ](https://help.openai.com/en/articles/8555545-file-uploads-faq)
+(checked September 27, 2026). This app uses binary MiB limits and retains its own
+parser, excerpt, image-resolution and storage constraints. Limits of the chosen
+model provider are separate; no ChatGPT quota or subscription is inherited.
 
 The workspace smoke uses an isolated Electron profile and a loopback fixture model.
 It checks source transmission, document output, native export/copy bytes, safe

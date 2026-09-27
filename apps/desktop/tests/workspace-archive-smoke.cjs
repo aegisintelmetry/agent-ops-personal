@@ -1,0 +1,101 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const http = require('node:http');
+const JSZip = require('jszip');
+const { _electron } = require('playwright');
+const root = path.resolve(__dirname, '..');
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'aegis-archive-ui-'));
+let app, server;
+const payloads = [];
+(async () => {
+  const zipPath = path.join(profile, 'project.zip');
+  const zip = new JSZip().file('README.md', 'ZIP project revenue: 42').file('src/main.py', 'print("reference")');
+  fs.writeFileSync(zipPath, await zip.generateAsync({ type: 'nodebuffer' }));
+  const largePath = path.join(profile, 'large.txt');
+  fs.writeFileSync(largePath, 'Bounded source excerpt. '.repeat(4000));
+  fs.truncateSync(largePath, 512 * 1024 * 1024);
+  const tooLarge = path.join(profile, 'too-large.csv');
+  fs.writeFileSync(tooLarge, 'a,b'); fs.truncateSync(tooLarge, 50 * 1024 * 1024 + 1);
+  server = http.createServer((req, res) => {
+    let body = ''; req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      payloads.push(JSON.parse(body)); res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ choices: [{ message: { content: 'ZIP project revenue is 42.' }, finish_reason: 'stop' }] }));
+    });
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE;
+  const exe = process.env.BTK_DESKTOP_TEST_EXE;
+  const launch = () => _electron.launch({ executablePath: exe || path.join(root, 'node_modules/electron/dist/electron.exe'), args: [...(exe ? [] : [root]), `--user-data-dir=${profile}`], env });
+  app = await launch();
+  let page = await app.firstWindow(); page.setDefaultTimeout(20000);
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  await page.getByRole('button', { name: '개인용 Personal' }).waitFor();
+  await page.evaluate(async port => {
+    await window.btk.personal.mode('personal');
+    await window.btk.personal.save({ provider: 'local', endpoint: `http://127.0.0.1:${port}/v1`, model: 'zip-fixture', maxTokens: 512 });
+  }, server.address().port);
+  await page.reload();
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const input = () => page.getByLabel('소스 추가', { exact: true });
+  assert.match(await input().getAttribute('accept'), /\.zip/);
+  await page.evaluate(() => {
+    const original = File.prototype.arrayBuffer;
+    window.restoreFileReading = () => { File.prototype.arrayBuffer = original; };
+    File.prototype.arrayBuffer = function () {
+      if (/\.(zip|txt)$/i.test(this.name)) throw new Error('native files must not be buffered in renderer');
+      return original.call(this);
+    };
+  });
+  await input().setInputFiles(zipPath);
+  await page.locator('.workspace-source-chips').getByText('project.zip').waitFor();
+  await input().setInputFiles(largePath);
+  await page.locator('.workspace-source-notice').filter({ hasText: 'large.txt: 일부 내용만' }).waitFor();
+  await input().setInputFiles(tooLarge);
+  await page.getByRole('alert').filter({ hasText: '파일 크기 제한' }).waitFor();
+  assert.equal(await page.locator('.workspace-source-chips li').count(), 2);
+  await page.getByLabel('개인 메시지', { exact: true }).fill('Summarize the ZIP project');
+  await page.getByRole('button', { name: '개인 메시지 전송', exact: true }).click();
+  await page.locator('.personal-message.assistant').filter({ hasText: 'ZIP project revenue is 42.' }).waitFor();
+  assert.match(payloads[0].messages.at(-1).content, /ZIP project revenue: 42/);
+  assert.match(payloads[0].messages.at(-1).content, /"partial":true/);
+  assert.ok(payloads[0].messages.at(-1).content.length < 16000);
+  const png = await page.evaluate(() => { const canvas = document.createElement('canvas'); canvas.width = canvas.height = 20; const c = canvas.getContext('2d'); c.fillStyle = '#20896b'; c.fillRect(0, 0, 20, 20); return canvas.toDataURL().split(',')[1]; });
+  const imagePath = path.join(profile, 'large.png');
+  fs.writeFileSync(imagePath, Buffer.from(png, 'base64')); fs.truncateSync(imagePath, 20 * 1024 * 1024);
+  await input().setInputFiles(imagePath);
+  await page.locator('.workspace-source-notice').filter({ hasText: 'large.png: 이미지 크기 최적화됨' }).waitFor();
+  await page.evaluate(bytes => {
+    window.restoreFileReading();
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(new File([new Uint8Array(bytes)], 'dropped.zip', { type: 'application/zip' }));
+    document.querySelector('.workspace-inputs').dispatchEvent(new DragEvent('drop', { bubbles: true, dataTransfer }));
+  }, Array.from(fs.readFileSync(zipPath)));
+  await page.locator('.workspace-source-chips').getByText('dropped.zip').waitFor();
+  await input().setInputFiles({ name: 'broken.zip', mimeType: 'application/zip', buffer: Buffer.from('broken') });
+  await page.getByRole('alert').filter({ hasText: '손상되었거나' }).waitFor();
+  assert.equal(await page.locator('.workspace-source-chips li').count(), 4);
+  const groups = await page.evaluate(() => window.btk.personal.workspace.read());
+  // Wait for the existing debounced encrypted save before checking persisted metadata.
+  await page.waitForFunction(async () => Object.values(await window.btk.personal.workspace.read()).some(group => group.items.some(item => item.sources?.some(source => source.optimized))));
+  assert.ok(groups);
+  fs.mkdirSync(path.join(root, 'artifacts'), { recursive: true });
+  await page.screenshot({ path: path.join(root, 'artifacts/workspace-archive-desktop.png') });
+  await app.close(); app = await launch(); page = await app.firstWindow(); page.setDefaultTimeout(20000);
+  page.on('pageerror', error => errors.push(error.message));
+  await page.locator('.workspace-source-notice').filter({ hasText: 'large.txt: 일부 내용만' }).waitFor();
+  await page.locator('.workspace-source-notice').filter({ hasText: 'large.png: 이미지 크기 최적화됨' }).waitFor();
+  await page.setViewportSize({ width: 390, height: 760 });
+  await page.getByLabel('언어 / Language').selectOption('en');
+  await page.locator('.workspace-source-notice').filter({ hasText: 'Excerpt only' }).waitFor();
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({ path: path.join(root, 'artifacts/workspace-archive-mobile.png') });
+  assert.deepEqual(errors, []);
+  console.log(JSON.stringify({ status: 'passed', checks: ['ZIP picker', 'native file path', '512MiB text', 'CSV size error', 'ZIP model context', 'bounded excerpts', '20MiB image optimization', 'ZIP drop', 'invalid ZIP preserves attachments', 'encrypted restart metadata', 'English', 'mobile layout'], realProviderCalls: 0, fixtureCalls: payloads.length }));
+})().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => {
+  await app?.close(); server?.closeAllConnections();
+  if (server?.listening) await new Promise(resolve => server.close(resolve));
+  fs.rmSync(profile, { recursive: true, force: true });
+});

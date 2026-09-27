@@ -6,7 +6,7 @@
   "asarUnpack": ["node_modules/@google/gemini-cli/**"],
   "afterPack": "./after-pack.cjs",
   "directories": { "output": "release" },
-  "files": ["dist/**", "electron/**", "package.json"],
+  "files": ["dist/**", "electron/**", "package.json", "workspace-limits.json"],
   "extraResources": [
     { "from": "../../LICENSE", "to": "LICENSE" },
     { "from": "../../NOTICE", "to": "NOTICE" },

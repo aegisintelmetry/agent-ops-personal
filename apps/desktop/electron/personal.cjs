@@ -75,6 +75,7 @@ class PersonalService {
       accountConfigured: Boolean(this.googleAccounts?.has(this.data.googleAccountId)), secureStorage: this.encryptionAvailable() };
     return { mode, provider: connection === "codex" ? "codex" : provider, endpoint: connection === "codex" ? "ChatGPT / Codex" : endpoint,
       model: connection === "codex" ? this.data.codexModel || "" : model, connection, workspace, maxTokens,
+      ...(connection === 'codex' ? { reasoningEffort: this.data.codexReasoningEffort || '' } : {}),
       keyConfigured: connection === "api" && Boolean(encryptedKey), secureStorage: this.encryptionAvailable() };
   }
   write(data) {
@@ -94,10 +95,11 @@ class PersonalService {
     if (!["api", "codex", "google", "gemini-cli"].includes(value)) fail("지원하지 않는 연결 방식입니다.");
     return this.write({ ...this.data, connection: value });
   }
-  codexModel(model) {
+  codexModel(model, effort = '') {
     this.idle();
     if (typeof model !== "string" || !model.trim() || model.length > 200 || /[\x00-\x1f]/.test(model)) fail("Codex 모델을 선택해 주세요.");
-    return this.write({ ...this.data, codexModel: model, connection: "codex" });
+    if (!require('./codex-effort.cjs').validEffort(effort)) fail('지원되는 추론 강도를 선택해 주세요.');
+    return this.write({ ...this.data, codexModel: model, codexReasoningEffort: effort, connection: "codex" });
   }
   googleModel({ accountId, model, maxTokens }) {
     this.idle();
